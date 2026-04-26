@@ -12,10 +12,16 @@ export type FaceBox = {
   height: number;
 };
 
+export type FacePoint = {
+  x: number;
+  y: number;
+};
+
 export type FaceRegions = {
   faceBox: FaceBox;
   eyesBox: FaceBox;
   mouthBox: FaceBox;
+  facePolygon?: FacePoint[];
 };
 
 type NativeDetectedFace = {
@@ -131,6 +137,37 @@ function boxFromLandmarks(
     imageWidth,
     imageHeight
   );
+}
+
+function polygonFromLandmarks(
+  landmarks: NormalizedLandmark[],
+  indices: number[],
+  imageWidth: number,
+  imageHeight: number
+): FacePoint[] {
+  const points = indices
+    .map(index => landmarks[index])
+    .filter((landmark): landmark is NormalizedLandmark => Boolean(landmark))
+    .map(landmark => ({
+      x: landmark.x * imageWidth,
+      y: landmark.y * imageHeight,
+    }));
+
+  if (points.length < 3) {
+    return [];
+  }
+
+  const center = points.reduce(
+    (acc, point) => ({ x: acc.x + point.x / points.length, y: acc.y + point.y / points.length }),
+    { x: 0, y: 0 }
+  );
+
+  return points
+    .sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x))
+    .map(point => ({
+      x: Math.round(point.x),
+      y: Math.round(point.y),
+    }));
 }
 
 function buildFallbackRegions(faceBox: FaceBox): FaceRegions {
@@ -266,6 +303,7 @@ function buildRegionsFromLandmarks(
   const faceBox = boxFromLandmarks(landmarks, faceOvalIndices, imageWidth, imageHeight);
   const eyesBox = boxFromLandmarks(landmarks, eyeIndices, imageWidth, imageHeight);
   const mouthBox = boxFromLandmarks(landmarks, lipIndices, imageWidth, imageHeight);
+  const facePolygon = polygonFromLandmarks(landmarks, faceOvalIndices, imageWidth, imageHeight);
 
   if (!faceBox || !eyesBox || !mouthBox) {
     return null;
@@ -275,6 +313,7 @@ function buildRegionsFromLandmarks(
     faceBox: expandBox(faceBox, imageWidth, imageHeight, 0.06, 0.1, 6),
     eyesBox: expandBox(eyesBox, imageWidth, imageHeight, 0.22, 0.4, 8),
     mouthBox: expandBox(mouthBox, imageWidth, imageHeight, 0.22, 0.32, 6),
+    facePolygon,
   };
 }
 

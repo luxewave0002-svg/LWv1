@@ -1,6 +1,6 @@
 "use client";
 
-import { detectFaceRegions, type FaceRegions } from "@/lib/faceDetector";
+import { detectFaceRegions, type FacePoint, type FaceRegions } from "@/lib/faceDetector";
 import { type CSSProperties, useCallback, useState } from "react";
 
 type TabId = "generate" | "avatar" | "mosaic" | "edit" | "video" | "history" | "plan";
@@ -153,6 +153,20 @@ export default function Home() {
     [clampMosaicRegion]
   );
 
+  const buildAdjustedFacePolygon = useCallback(
+    (regions: FaceRegions, currentBox: MosaicBox): FacePoint[] | null => {
+      if (!regions.facePolygon?.length) {
+        return null;
+      }
+
+      return regions.facePolygon.map(point => ({
+        x: currentBox.x + ((point.x - regions.faceBox.x) / regions.faceBox.width) * currentBox.width,
+        y: currentBox.y + ((point.y - regions.faceBox.y) / regions.faceBox.height) * currentBox.height,
+      }));
+    },
+    []
+  );
+
   const runMosaic = useCallback(
     async (mode: MosaicMode) => {
       if (!mosaicSrc || !mosaicBox) return;
@@ -198,6 +212,13 @@ export default function Home() {
         formData.append("scope", scope);
         formData.append("strength", strengthMap[mosaicStrength]);
 
+        if (scope === "face" && mosaicRegions) {
+          const facePolygon = buildAdjustedFacePolygon(mosaicRegions, mosaicBox);
+          if (facePolygon) {
+            formData.append("facePolygon", JSON.stringify(facePolygon));
+          }
+        }
+
         const apiRes = await fetch("/api/mosaic", { method: "POST", body: formData });
         if (!apiRes.ok) {
           throw new Error("モザイク処理に失敗しました");
@@ -213,7 +234,7 @@ export default function Home() {
         setMosaicLoading(false);
       }
     },
-    [mosaicArea, mosaicBox, mosaicSrc, mosaicStrength]
+    [buildAdjustedFacePolygon, mosaicArea, mosaicBox, mosaicRegions, mosaicSrc, mosaicStrength]
   );
 
   const renderPlaceholder = (title: string, body: string) => (

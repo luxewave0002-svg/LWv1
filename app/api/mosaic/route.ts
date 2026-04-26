@@ -18,6 +18,11 @@ type Region = {
   maskShape: MaskShape;
 };
 
+type FacePoint = {
+  x: number;
+  y: number;
+};
+
 function clampRegion(
   left: number,
   top: number,
@@ -196,13 +201,72 @@ function parseStyle(formData: FormData): Style {
   return "mosaic";
 }
 
+function parseFacePolygon(raw: FormDataEntryValue | null, imageWidth: number, imageHeight: number): FacePoint[] | null {
+  if (typeof raw !== "string" || !raw.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    const points = parsed
+      .map(point => {
+        if (!point || typeof point !== "object") {
+          return null;
+        }
+
+        const maybePoint = point as Partial<FacePoint>;
+        const x = Number(maybePoint.x);
+        const y = Number(maybePoint.y);
+
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          return null;
+        }
+
+        return {
+          x: Math.max(0, Math.min(imageWidth, x)),
+          y: Math.max(0, Math.min(imageHeight, y)),
+        };
+      })
+      .filter((point): point is FacePoint => Boolean(point));
+
+    return points.length >= 8 ? points : null;
+  } catch {
+    return null;
+  }
+}
+
+function polygonToSvgPoints(points: FacePoint[], width: number, height: number) {
+  const center = points.reduce(
+    (acc, point) => ({ x: acc.x + point.x / points.length, y: acc.y + point.y / points.length }),
+    { x: 0, y: 0 }
+  );
+
+  return points
+    .map(point => {
+      const expandedX = center.x + (point.x - center.x) * 1.04;
+      const expandedY = center.y + (point.y - center.y) * 1.06;
+
+      return {
+        x: Math.max(0, Math.min(width, expandedX)),
+        y: Math.max(0, Math.min(height, expandedY)),
+      };
+    })
+    .map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+    .join(" ");
+}
+
 async function buildSoftMask(
   width: number,
   height: number,
   ellipseRx: number,
   ellipseRy: number,
   blurMask: number,
-  maskShape: MaskShape
+  maskShape: MaskShape,
+  polygon?: FacePoint[] | null
 ) {
   const filterPad = blurMask * 3;
   const facePath = [
@@ -220,7 +284,9 @@ async function buildSoftMask(
 
   let shapeMarkup = `<ellipse cx="${width / 2}" cy="${height / 2}" rx="${width * ellipseRx}" ry="${height * ellipseRy}" fill="white" filter="url(#soft)" />`;
 
-  if (maskShape === "face") {
+  if (polygon?.length) {
+    shapeMarkup = `<polygon points="${polygonToSvgPoints(polygon, width, height)}" fill="white" filter="url(#soft)" />`;
+  } else if (maskShape === "face") {
     shapeMarkup = `<path d="${facePath}" fill="white" filter="url(#soft)" />`;
   } else if (maskShape === "capsule") {
     shapeMarkup = `<rect x="${capsuleX}" y="${capsuleY}" width="${capsuleWidth}" height="${capsuleHeight}" rx="${capsuleRadius}" ry="${capsuleRadius}" fill="white" filter="url(#soft)" />`;
@@ -265,9 +331,10 @@ async function applySoftMask(
   ellipseRx: number,
   ellipseRy: number,
   blurMask: number,
-  maskShape: MaskShape
+  maskShape: MaskShape,
+  polygon?: FacePoint[] | null
 ) {
-  const alphaMask = await buildSoftMask(width, height, ellipseRx, ellipseRy, blurMask, maskShape);
+  const alphaMask = await buildSoftMask(width, height, ellipseRx, ellipseRy, blurMask, maskShape, polygon);
   return sharp(source).removeAlpha().joinChannel(alphaMask).png().toBuffer();
 }
 
@@ -280,13 +347,14 @@ async function applyBlur(
   ellipseRx: number,
   ellipseRy: number,
   blurMask: number,
-  maskShape: MaskShape
+  maskShape: MaskShape,
+  polygon?: FacePoint[] | null
 ) {
   const sigma = style === "lens" ? Math.max(14, strength * 8) : Math.max(10, strength * 6);
 
   const region = await sharp(source).blur(sigma).png().toBuffer();
 
-  return applySoftMask(region, width, height, ellipseRx, ellipseRy, blurMask, maskShape);
+  return applySoftMask(region, width, height, ellipseRx, ellipseRy, blurMask, maskShape, polygon);
 }
 
 async function applyPixelate(
@@ -297,7 +365,8 @@ async function applyPixelate(
   ellipseRx: number,
   ellipseRy: number,
   blurMask: number,
-  maskShape: MaskShape
+  maskShape: MaskShape,
+  polygon?: FacePoint[] | null
 ) {
   const block = Math.max(18, Math.floor(24 * strength));
   const downW = Math.max(3, Math.floor(width / block));
@@ -309,7 +378,7 @@ async function applyPixelate(
     .png()
     .toBuffer();
 
-  return applySoftMask(pixelated, width, height, ellipseRx, ellipseRy, blurMask, maskShape);
+  return applySoftMask(pixelated, width, height, ellipseRx, ellipseRy, blurMask, maskShape, polygon);
 }
 
 async function applySimplePixelate(
@@ -320,7 +389,8 @@ async function applySimplePixelate(
   ellipseRx: number,
   ellipseRy: number,
   blurMask: number,
-  maskShape: MaskShape
+  maskShape: MaskShape,
+  polygon?: FacePoint[] | null
 ) {
   const shortSide = Math.min(width, height);
   const ratioByStrength = [0.16, 0.22, 0.28, 0.34, 0.42];
@@ -342,7 +412,7 @@ async function applySimplePixelate(
     .png()
     .toBuffer();
 
-  return applySoftMask(pixelated, width, height, ellipseRx, ellipseRy, blurMask, maskShape);
+  return applySoftMask(pixelated, width, height, ellipseRx, ellipseRy, blurMask, maskShape, polygon);
 }
 
 export async function POST(req: NextRequest) {
@@ -372,6 +442,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid image" }, { status: 400 });
     }
 
+    const facePolygon = scope === "face" ? parseFacePolygon(formData.get("facePolygon"), imageWidth, imageHeight) : null;
     let region: Region;
 
     if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(width) && Number.isFinite(height)) {
@@ -405,6 +476,11 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    const localFacePolygon = facePolygon?.map(point => ({
+      x: point.x - region.left,
+      y: point.y - region.top,
+    })) ?? null;
+
     const extracted = await sharp(normalizedBytes)
       .extract({
         left: region.left,
@@ -425,7 +501,8 @@ export async function POST(req: NextRequest) {
             region.ellipseRx,
             region.ellipseRy,
             region.blurMask,
-            region.maskShape
+            region.maskShape,
+            localFacePolygon
           )
         : style === "mosaic"
         ? await applyPixelate(
@@ -436,7 +513,8 @@ export async function POST(req: NextRequest) {
             region.ellipseRx,
             region.ellipseRy,
             region.blurMask,
-            region.maskShape
+            region.maskShape,
+            localFacePolygon
           )
         : await applyBlur(
             extracted,
@@ -447,7 +525,8 @@ export async function POST(req: NextRequest) {
             region.ellipseRx,
             region.ellipseRy,
             region.blurMask,
-            region.maskShape
+            region.maskShape,
+            localFacePolygon
           );
 
     const output = await sharp(normalizedBytes)
