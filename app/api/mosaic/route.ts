@@ -239,7 +239,7 @@ function parseFacePolygon(raw: FormDataEntryValue | null, imageWidth: number, im
   }
 }
 
-function polygonToSvgPoints(points: FacePoint[], width: number, height: number) {
+function polygonToSvgPoints(points: FacePoint[], width: number, height: number, scaleX = 1.04, scaleY = 1.06) {
   const center = points.reduce(
     (acc, point) => ({ x: acc.x + point.x / points.length, y: acc.y + point.y / points.length }),
     { x: 0, y: 0 }
@@ -247,8 +247,8 @@ function polygonToSvgPoints(points: FacePoint[], width: number, height: number) 
 
   return points
     .map(point => {
-      const expandedX = center.x + (point.x - center.x) * 1.04;
-      const expandedY = center.y + (point.y - center.y) * 1.06;
+      const expandedX = center.x + (point.x - center.x) * scaleX;
+      const expandedY = center.y + (point.y - center.y) * scaleY;
 
       return {
         x: Math.max(0, Math.min(width, expandedX)),
@@ -287,7 +287,9 @@ async function buildFullImageMask(
   let shapeMarkup = `<ellipse cx="${region.left + region.width / 2}" cy="${region.top + region.height / 2}" rx="${region.width * region.ellipseRx}" ry="${region.height * region.ellipseRy}" fill="white" filter="url(#soft)" />`;
 
   if (polygon?.length) {
-    shapeMarkup = `<polygon points="${polygonToSvgPoints(polygon, imageWidth, imageHeight)}" fill="white" filter="url(#soft)" />`;
+    const scaleX = region.maskShape === "capsule" ? 1.45 : 1.04;
+    const scaleY = region.maskShape === "capsule" ? 1.9 : 1.06;
+    shapeMarkup = `<polygon points="${polygonToSvgPoints(polygon, imageWidth, imageHeight, scaleX, scaleY)}" fill="white" filter="url(#soft)" />`;
   } else if (region.maskShape === "face") {
     shapeMarkup = `<path d="${buildFacePath(region)}" fill="white" filter="url(#soft)" />`;
   } else if (region.maskShape === "capsule") {
@@ -325,6 +327,18 @@ async function buildFullImageMask(
     .extractChannel("alpha")
     .raw()
     .toBuffer();
+}
+
+function hasUsableMask(alphaMask: Buffer, region: Region) {
+  let activePixels = 0;
+
+  for (const value of alphaMask) {
+    if (value > 12) {
+      activePixels += 1;
+    }
+  }
+
+  return activePixels >= Math.max(64, region.width * region.height * 0.08);
 }
 
 async function buildSoftMask(
@@ -633,7 +647,10 @@ export async function POST(req: NextRequest) {
     }
 
     const fullEffect = await applyFullImageEffect(normalizedBytes, style, strength, imageWidth, imageHeight, region);
-    const alphaMask = await buildFullImageMask(imageWidth, imageHeight, region, regionPolygon);
+    let alphaMask = await buildFullImageMask(imageWidth, imageHeight, region, regionPolygon);
+    if (regionPolygon && !hasUsableMask(alphaMask, region)) {
+      alphaMask = await buildFullImageMask(imageWidth, imageHeight, region);
+    }
     const maskedEffect = await applyFullImageMask(fullEffect, alphaMask, imageWidth, imageHeight);
 
     const output = await sharp(normalizedBytes)

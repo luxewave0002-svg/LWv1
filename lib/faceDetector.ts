@@ -151,25 +151,41 @@ function polygonFromLandmarks(
     .map(index => landmarks[index])
     .filter((landmark): landmark is NormalizedLandmark => Boolean(landmark))
     .map(landmark => ({
-      x: landmark.x * imageWidth,
-      y: landmark.y * imageHeight,
+      x: Math.round(landmark.x * imageWidth),
+      y: Math.round(landmark.y * imageHeight),
     }));
 
   if (points.length < 3) {
     return [];
   }
 
-  const center = points.reduce(
-    (acc, point) => ({ x: acc.x + point.x / points.length, y: acc.y + point.y / points.length }),
-    { x: 0, y: 0 }
-  );
+  const uniquePoints = [...new Map(points.map(point => [`${point.x},${point.y}`, point])).values()]
+    .sort((a, b) => a.x === b.x ? a.y - b.y : a.x - b.x);
 
-  return points
-    .sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x))
-    .map(point => ({
-      x: Math.round(point.x),
-      y: Math.round(point.y),
-    }));
+  if (uniquePoints.length < 3) {
+    return [];
+  }
+
+  const cross = (origin: FacePoint, a: FacePoint, b: FacePoint) =>
+    (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
+
+  const lower: FacePoint[] = [];
+  for (const point of uniquePoints) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) {
+      lower.pop();
+    }
+    lower.push(point);
+  }
+
+  const upper: FacePoint[] = [];
+  for (const point of [...uniquePoints].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) {
+      upper.pop();
+    }
+    upper.push(point);
+  }
+
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
 function buildFallbackRegions(faceBox: FaceBox): FaceRegions {
