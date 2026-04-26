@@ -3,7 +3,7 @@ import sharp from "sharp";
 
 export const runtime = "nodejs";
 
-type Scope = "face" | "eyes_only" | "bust_up";
+type Scope = "face" | "eyes_only" | "mouth_only" | "bust_up";
 type Style = "blur" | "lens" | "mosaic" | "simple_mosaic";
 type MaskShape = "face" | "capsule" | "oval";
 
@@ -64,25 +64,30 @@ function expandRegion(
   );
 }
 
+function isMouthScope(scope: Scope) {
+  return scope === "mouth_only" || scope === "bust_up";
+}
+
 function tunePartialRegion(region: Region, scope: Scope, imageWidth: number, imageHeight: number): Region {
   if (scope === "face") {
     return region;
   }
 
+  const mouthScope = isMouthScope(scope);
   const expanded = expandRegion(
     region,
     imageWidth,
     imageHeight,
-    scope === "eyes_only" ? 0.22 : 0.16,
-    scope === "eyes_only" ? 0.45 : 0.35
+    scope === "eyes_only" ? 0.22 : 0.2,
+    scope === "eyes_only" ? 0.45 : 0.42
   );
 
   return {
     ...region,
     ...expanded,
-    ellipseRx: scope === "eyes_only" ? 0.42 : 0.36,
-    ellipseRy: scope === "eyes_only" ? 0.42 : 0.36,
-    blurMask: scope === "eyes_only" ? 8 : 10,
+    ellipseRx: scope === "eyes_only" ? 0.42 : 0.44,
+    ellipseRy: scope === "eyes_only" ? 0.42 : 0.38,
+    blurMask: mouthScope ? 5 : 8,
     maskShape: "capsule",
   };
 }
@@ -101,7 +106,7 @@ function regionForScope(scope: Scope, width: number, height: number): Region {
     };
   }
 
-  if (scope === "bust_up") {
+  if (isMouthScope(scope)) {
     return {
       left: Math.floor(width * 0.14),
       top: Math.floor(height * 0.08),
@@ -159,7 +164,7 @@ function regionForFaceBox(
     };
   }
 
-  if (scope === "bust_up") {
+  if (isMouthScope(scope)) {
     return {
       ...clampRegion(
         faceX + faceWidth * 0.22,
@@ -204,8 +209,19 @@ function parseStrength(rawStrength: string) {
     : 3;
 }
 
-function partialStrengthProfile(strength: number) {
+function partialStrengthProfile(strength: number, scope: Scope) {
   const index = Math.max(0, Math.min(4, strength - 1));
+
+  if (isMouthScope(scope)) {
+    return {
+      simpleRatio: [0.08, 0.18, 0.42, 0.78, 1.15][index],
+      simplePreBlur: [2, 7, 20, 44, 72][index],
+      simpleSaturation: [0.9, 0.72, 0.5, 0.34, 0.22][index],
+      mosaicBlock: [8, 22, 58, 118, 184][index],
+      blurSigma: [3, 9, 28, 58, 92][index],
+      lensSigma: [4, 12, 36, 74, 112][index],
+    };
+  }
 
   return {
     simpleRatio: [0.14, 0.24, 0.38, 0.56, 0.78][index],
@@ -540,10 +556,11 @@ async function applyFullImageEffect(
   strength: number,
   imageWidth: number,
   imageHeight: number,
-  region: Region
+  region: Region,
+  scope: Scope
 ) {
   const isPartialRegion = region.maskShape === "capsule";
-  const partialProfile = isPartialRegion ? partialStrengthProfile(strength) : null;
+  const partialProfile = isPartialRegion ? partialStrengthProfile(strength, scope) : null;
 
   if (style === "simple_mosaic") {
     const shortSide = Math.min(region.width, region.height);
@@ -689,7 +706,7 @@ export async function POST(req: NextRequest) {
 
     region = tunePartialRegion(region, scope, imageWidth, imageHeight);
 
-    const fullEffect = await applyFullImageEffect(normalizedBytes, style, strength, imageWidth, imageHeight, region);
+    const fullEffect = await applyFullImageEffect(normalizedBytes, style, strength, imageWidth, imageHeight, region, scope);
     const maskPolygon = scope === "face" ? regionPolygon : null;
     let alphaMask = await buildFullImageMask(imageWidth, imageHeight, region, maskPolygon);
     if (maskPolygon && !hasUsableMask(alphaMask, region)) {

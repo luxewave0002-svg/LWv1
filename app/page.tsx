@@ -203,7 +203,7 @@ export default function Home() {
         };
 
         const scope =
-          mosaicArea === "顔全体" ? "face" : mosaicArea === "目元のみ" ? "eyes_only" : "bust_up";
+          mosaicArea === "顔全体" ? "face" : mosaicArea === "目元のみ" ? "eyes_only" : "mouth_only";
 
         const formData = new FormData();
         formData.append("file", file);
