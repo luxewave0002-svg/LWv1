@@ -153,15 +153,19 @@ export default function Home() {
     [clampMosaicRegion]
   );
 
-  const buildAdjustedFacePolygon = useCallback(
-    (regions: FaceRegions, currentBox: MosaicBox): FacePoint[] | null => {
-      if (!regions.facePolygon?.length) {
+  const buildAdjustedPolygon = useCallback(
+    (
+      polygon: FacePoint[] | undefined,
+      baseBox: MosaicBox,
+      currentBox: MosaicBox
+    ): FacePoint[] | null => {
+      if (!polygon?.length) {
         return null;
       }
 
-      return regions.facePolygon.map(point => ({
-        x: currentBox.x + ((point.x - regions.faceBox.x) / regions.faceBox.width) * currentBox.width,
-        y: currentBox.y + ((point.y - regions.faceBox.y) / regions.faceBox.height) * currentBox.height,
+      return polygon.map(point => ({
+        x: currentBox.x + ((point.x - baseBox.x) / baseBox.width) * currentBox.width,
+        y: currentBox.y + ((point.y - baseBox.y) / baseBox.height) * currentBox.height,
       }));
     },
     []
@@ -212,10 +216,16 @@ export default function Home() {
         formData.append("scope", scope);
         formData.append("strength", strengthMap[mosaicStrength]);
 
-        if (scope === "face" && mosaicRegions) {
-          const facePolygon = buildAdjustedFacePolygon(mosaicRegions, mosaicBox);
-          if (facePolygon) {
-            formData.append("facePolygon", JSON.stringify(facePolygon));
+        if (mosaicRegions) {
+          const polygon =
+            mosaicArea === "顔全体"
+              ? buildAdjustedPolygon(mosaicRegions.facePolygon, mosaicRegions.faceBox, mosaicBox)
+              : mosaicArea === "目元のみ"
+                ? buildAdjustedPolygon(mosaicRegions.eyesPolygon, mosaicRegions.eyesBox, mosaicBox)
+                : buildAdjustedPolygon(mosaicRegions.mouthPolygon, mosaicRegions.mouthBox, mosaicBox);
+
+          if (polygon) {
+            formData.append("regionPolygon", JSON.stringify(polygon));
           }
         }
 
@@ -234,7 +244,7 @@ export default function Home() {
         setMosaicLoading(false);
       }
     },
-    [buildAdjustedFacePolygon, mosaicArea, mosaicBox, mosaicRegions, mosaicSrc, mosaicStrength]
+    [buildAdjustedPolygon, mosaicArea, mosaicBox, mosaicRegions, mosaicSrc, mosaicStrength]
   );
 
   const renderPlaceholder = (title: string, body: string) => (

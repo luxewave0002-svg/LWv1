@@ -22,6 +22,8 @@ export type FaceRegions = {
   eyesBox: FaceBox;
   mouthBox: FaceBox;
   facePolygon?: FacePoint[];
+  eyesPolygon?: FacePoint[];
+  mouthPolygon?: FacePoint[];
 };
 
 type NativeDetectedFace = {
@@ -304,6 +306,8 @@ function buildRegionsFromLandmarks(
   const eyesBox = boxFromLandmarks(landmarks, eyeIndices, imageWidth, imageHeight);
   const mouthBox = boxFromLandmarks(landmarks, lipIndices, imageWidth, imageHeight);
   const facePolygon = polygonFromLandmarks(landmarks, faceOvalIndices, imageWidth, imageHeight);
+  const eyesPolygon = polygonFromLandmarks(landmarks, eyeIndices, imageWidth, imageHeight);
+  const mouthPolygon = polygonFromLandmarks(landmarks, lipIndices, imageWidth, imageHeight);
 
   if (!faceBox || !eyesBox || !mouthBox) {
     return null;
@@ -314,6 +318,8 @@ function buildRegionsFromLandmarks(
     eyesBox: expandBox(eyesBox, imageWidth, imageHeight, 0.22, 0.4, 8),
     mouthBox: expandBox(mouthBox, imageWidth, imageHeight, 0.22, 0.32, 6),
     facePolygon,
+    eyesPolygon,
+    mouthPolygon,
   };
 }
 

@@ -594,7 +594,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid image" }, { status: 400 });
     }
 
-    const facePolygon = scope === "face" ? parseFacePolygon(formData.get("facePolygon"), imageWidth, imageHeight) : null;
+    const regionPolygon = parseFacePolygon(
+      formData.get("regionPolygon") ?? formData.get("facePolygon"),
+      imageWidth,
+      imageHeight
+    );
     let region: Region;
 
     if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(width) && Number.isFinite(height)) {
@@ -629,7 +633,7 @@ export async function POST(req: NextRequest) {
     }
 
     const fullEffect = await applyFullImageEffect(normalizedBytes, style, strength, imageWidth, imageHeight, region);
-    const alphaMask = await buildFullImageMask(imageWidth, imageHeight, region, facePolygon);
+    const alphaMask = await buildFullImageMask(imageWidth, imageHeight, region, regionPolygon);
     const maskedEffect = await applyFullImageMask(fullEffect, alphaMask, imageWidth, imageHeight);
 
     const output = await sharp(normalizedBytes)
