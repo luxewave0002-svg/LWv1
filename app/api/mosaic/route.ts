@@ -206,11 +206,11 @@ async function buildSoftMask(
 ) {
   const filterPad = blurMask * 3;
   const facePath = [
-    `M ${width * 0.5} ${height * 0.05}`,
-    `C ${width * 0.23} ${height * 0.05}, ${width * 0.1} ${height * 0.26}, ${width * 0.12} ${height * 0.48}`,
-    `C ${width * 0.14} ${height * 0.72}, ${width * 0.33} ${height * 0.9}, ${width * 0.5} ${height * 0.94}`,
-    `C ${width * 0.67} ${height * 0.9}, ${width * 0.86} ${height * 0.72}, ${width * 0.88} ${height * 0.48}`,
-    `C ${width * 0.9} ${height * 0.26}, ${width * 0.77} ${height * 0.05}, ${width * 0.5} ${height * 0.05} Z`,
+    `M ${width * 0.5} ${height * 0.03}`,
+    `C ${width * 0.26} ${height * 0.03}, ${width * 0.1} ${height * 0.18}, ${width * 0.08} ${height * 0.42}`,
+    `C ${width * 0.06} ${height * 0.66}, ${width * 0.18} ${height * 0.86}, ${width * 0.5} ${height * 0.98}`,
+    `C ${width * 0.82} ${height * 0.86}, ${width * 0.94} ${height * 0.66}, ${width * 0.92} ${height * 0.42}`,
+    `C ${width * 0.9} ${height * 0.18}, ${width * 0.74} ${height * 0.03}, ${width * 0.5} ${height * 0.03} Z`,
   ].join(" ");
   const capsuleX = width * 0.12;
   const capsuleY = height * 0.18;
@@ -371,9 +371,9 @@ export async function POST(req: NextRequest) {
       if (boxMode === "region") {
         region = {
           ...clampRegion(x, y, width, height, imageWidth, imageHeight),
-          ellipseRx: scope === "face" ? 0.32 : 0.3,
-          ellipseRy: scope === "face" ? 0.42 : 0.3,
-          blurMask: scope === "face" ? 32 : 26,
+          ellipseRx: scope === "face" ? 0.34 : 0.3,
+          ellipseRy: scope === "face" ? 0.46 : 0.3,
+          blurMask: scope === "face" ? 18 : 26,
           maskShape: scope === "face" ? "face" : "capsule",
         };
       } else {
@@ -388,8 +388,8 @@ export async function POST(req: NextRequest) {
         region,
         imageWidth,
         imageHeight,
-        scope === "face" ? 0.18 : 0.12,
-        scope === "face" ? 0.18 : 0.14
+        scope === "face" ? 0.05 : 0.12,
+        scope === "face" ? 0.04 : 0.14
       );
 
       region = {
