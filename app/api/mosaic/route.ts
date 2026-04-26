@@ -321,6 +321,7 @@ async function buildSoftMask(
     .resize(width, height)
     .ensureAlpha()
     .extractChannel("alpha")
+    .raw()
     .toBuffer();
 }
 
@@ -335,7 +336,11 @@ async function applySoftMask(
   polygon?: FacePoint[] | null
 ) {
   const alphaMask = await buildSoftMask(width, height, ellipseRx, ellipseRy, blurMask, maskShape, polygon);
-  return sharp(source).removeAlpha().joinChannel(alphaMask).png().toBuffer();
+  return sharp(source)
+    .removeAlpha()
+    .joinChannel(alphaMask, { raw: { width, height, channels: 1 } })
+    .png()
+    .toBuffer();
 }
 
 async function applyBlur(
