@@ -93,7 +93,7 @@ function regionForScope(scope: Scope, width: number, height: number): Region {
     height: Math.max(1, Math.floor(height * 0.62)),
     ellipseRx: 0.38,
     ellipseRy: 0.48,
-    blurMask: 8,
+    blurMask: 3,
     maskShape: "oval",
   };
 }
@@ -152,7 +152,7 @@ function regionForFaceBox(
     ...clampRegion(faceX, faceY, faceWidth, faceHeight, imageWidth, imageHeight),
     ellipseRx: 0.38,
     ellipseRy: 0.48,
-    blurMask: 8,
+    blurMask: 3,
     maskShape: "oval",
   };
 }
@@ -323,15 +323,22 @@ async function applySimplePixelate(
   maskShape: MaskShape
 ) {
   const shortSide = Math.min(width, height);
-  const ratioByStrength = [0.06, 0.08, 0.1, 0.12, 0.15];
+  const ratioByStrength = [0.16, 0.22, 0.28, 0.34, 0.42];
   const ratio = ratioByStrength[Math.max(0, Math.min(4, strength - 1))];
   const blockSize = Math.max(1, Math.round(shortSide * ratio));
-  const downW = Math.max(1, Math.floor(width / blockSize));
-  const downH = Math.max(1, Math.floor(height / blockSize));
+  const downW = Math.max(2, Math.floor(width / blockSize));
+  const downH = Math.max(2, Math.floor(height / blockSize));
 
-  const pixelated = await sharp(source)
+  const preBlurred = await sharp(source)
+    .blur(Math.max(10, strength * 7))
+    .modulate({ saturation: 0.65, brightness: 1.03 })
+    .png()
+    .toBuffer();
+
+  const pixelated = await sharp(preBlurred)
     .resize(downW, downH, { kernel: "nearest" })
     .resize(width, height, { kernel: "nearest" })
+    .blur(1.2)
     .png()
     .toBuffer();
 
@@ -373,7 +380,7 @@ export async function POST(req: NextRequest) {
           ...clampRegion(x, y, width, height, imageWidth, imageHeight),
           ellipseRx: scope === "face" ? 0.38 : 0.3,
           ellipseRy: scope === "face" ? 0.48 : 0.3,
-          blurMask: scope === "face" ? 8 : 26,
+          blurMask: scope === "face" ? 3 : 26,
           maskShape: scope === "face" ? "oval" : "capsule",
         };
       } else {
