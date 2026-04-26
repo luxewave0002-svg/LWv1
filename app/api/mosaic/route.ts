@@ -91,10 +91,10 @@ function regionForScope(scope: Scope, width: number, height: number): Region {
     top: Math.floor(height * 0.12),
     width: Math.max(1, Math.floor(width * 0.6)),
     height: Math.max(1, Math.floor(height * 0.62)),
-    ellipseRx: 0.32,
-    ellipseRy: 0.4,
-    blurMask: 20,
-    maskShape: "face",
+    ellipseRx: 0.38,
+    ellipseRy: 0.48,
+    blurMask: 8,
+    maskShape: "oval",
   };
 }
 
@@ -150,10 +150,10 @@ function regionForFaceBox(
 
   return {
     ...clampRegion(faceX, faceY, faceWidth, faceHeight, imageWidth, imageHeight),
-    ellipseRx: 0.3,
-    ellipseRy: 0.38,
-    blurMask: 24,
-    maskShape: "face",
+    ellipseRx: 0.38,
+    ellipseRy: 0.48,
+    blurMask: 8,
+    maskShape: "oval",
   };
 }
 
@@ -371,10 +371,10 @@ export async function POST(req: NextRequest) {
       if (boxMode === "region") {
         region = {
           ...clampRegion(x, y, width, height, imageWidth, imageHeight),
-          ellipseRx: scope === "face" ? 0.34 : 0.3,
-          ellipseRy: scope === "face" ? 0.46 : 0.3,
-          blurMask: scope === "face" ? 18 : 26,
-          maskShape: scope === "face" ? "face" : "capsule",
+          ellipseRx: scope === "face" ? 0.38 : 0.3,
+          ellipseRy: scope === "face" ? 0.48 : 0.3,
+          blurMask: scope === "face" ? 8 : 26,
+          maskShape: scope === "face" ? "oval" : "capsule",
         };
       } else {
         region = regionForFaceBox(scope, imageWidth, imageHeight, x, y, width, height);
@@ -388,8 +388,8 @@ export async function POST(req: NextRequest) {
         region,
         imageWidth,
         imageHeight,
-        scope === "face" ? 0.05 : 0.12,
-        scope === "face" ? 0.04 : 0.14
+        scope === "face" ? 0.02 : 0.12,
+        scope === "face" ? 0.02 : 0.14
       );
 
       region = {
