@@ -6,6 +6,8 @@ const FAL_KEY = process.env.FAL_API_KEY!;
 const GROK_EDIT_MODEL = "xai/grok-imagine-image/edit";
 const FACE_PRESERVATION_PROMPT =
   "Keep the original person's face unchanged. Preserve identity, facial features, expression, eyes, nose, mouth, face shape, hairstyle, and skin tone. Do not beautify, replace, redraw, or alter the face.";
+const WATERMARK_REMOVAL_PROMPT =
+  "Remove all watermarks, logos, text overlays, captions, signatures, brand marks, and UI artifacts from the image. Do not add any watermark, logo, text, caption, signature, or brand mark to the result.";
 
 async function fileToDataUri(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        prompt: `${FACE_PRESERVATION_PROMPT}\n\n${prompt}`,
+        prompt: `${FACE_PRESERVATION_PROMPT}\n${WATERMARK_REMOVAL_PROMPT}\n\n${prompt}`,
         image_urls: [imageUrl],
         num_images: 1,
         resolution,

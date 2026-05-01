@@ -39,7 +39,7 @@ export default function Home() {
 
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editSrc, setEditSrc] = useState<string | null>(null);
-  const [editPrompt, setEditPrompt] = useState("顔、表情、目鼻口、輪郭、髪型は元画像のまま維持。背景とライティングだけを自然に整えて、高品質に仕上げる");
+  const [editPrompt, setEditPrompt] = useState("顔、表情、目鼻口、輪郭、髪型は元画像のまま維持。ロゴ、透かし、文字は削除。背景とライティングだけを自然に整えて、高品質に仕上げる");
   const [editResolution, setEditResolution] = useState<EditResolution>("1k");
   const [editLoading, setEditLoading] = useState(false);
   const [editResult, setEditResult] = useState<string | null>(null);
