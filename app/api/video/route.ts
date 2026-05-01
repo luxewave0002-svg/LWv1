@@ -68,8 +68,9 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
     return NextResponse.json({ requestId: data.request_id, model });
   } catch (error) {
-    console.error("video submit failed", error);
-    return NextResponse.json({ error: "動画生成の開始に失敗しました" }, { status: 500 });
+    const msg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console.error("video submit failed", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
