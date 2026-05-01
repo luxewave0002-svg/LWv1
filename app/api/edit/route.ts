@@ -20,6 +20,28 @@ function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function getFalEditError(status: number, body: string) {
+  let message = body;
+
+  try {
+    const parsed = JSON.parse(body) as { detail?: Array<{ msg?: string }> | string };
+    if (Array.isArray(parsed.detail)) {
+      message = parsed.detail.map(item => item.msg).filter(Boolean).join(" / ");
+    } else if (typeof parsed.detail === "string") {
+      message = parsed.detail;
+    }
+  } catch {
+    // Fall back to the raw response body below.
+  }
+
+  if (message.includes("content could not be processed")) {
+    return "Grok側の安全フィルターで編集できませんでした。露出や性的表現を弱めて、別の表現で試してください。";
+  }
+
+  const redacted = message.replace(/data:image\/[^"'\s]+/g, "[uploaded image]");
+  return `Grok編集に失敗しました。(${status}) ${redacted.slice(0, 240)}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -57,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`grok edit failed: ${response.status} ${text}`);
+      throw new Error(getFalEditError(response.status, text));
     }
 
     const data = await response.json();

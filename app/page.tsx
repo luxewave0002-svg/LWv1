@@ -722,7 +722,7 @@ export default function Home() {
                       style={{
                         marginBottom: 12,
                         fontSize: 12,
-                        color: editStatus.includes("失敗") || editStatus.includes("Error") ? "#e06060" : "#4a8a6a",
+                        color: editStatus.includes("失敗") || editStatus.includes("Error") || editStatus.includes("できません") ? "#e06060" : "#4a8a6a",
                         background: "rgba(0,0,0,0.06)",
                         borderRadius: 8,
                         padding: "8px 12px",
