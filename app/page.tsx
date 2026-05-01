@@ -662,7 +662,7 @@ export default function Home() {
                 <div style={panelStyle}>
                   <div style={sectionLabelStyle}>解像度</div>
                   <div style={buttonRowStyle}>
-                    {(videoModel === "grok" ? ["480p", "720p"] : ["720p", "1080p"]).map(r => (
+                    {["480p", "720p"].map(r => (
                       <button key={r} onClick={() => setVideoResolution(r)} style={choiceButtonStyle(videoResolution === r)}>
                         {r}
                       </button>

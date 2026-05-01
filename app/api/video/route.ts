@@ -7,22 +7,19 @@ const MODEL_IDS: Record<string, string> = {
   seedance: "bytedance/seedance-2.0/fast/image-to-video",
 };
 
-async function uploadToFal(file: File): Promise<string> {
-  const res = await fetch("https://storage.fal.run/upload", {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${FAL_KEY}`,
-      "Content-Type": file.type || "image/jpeg",
-      "X-File-Name": file.name,
-    },
-    body: await file.arrayBuffer(),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`fal upload failed: ${text}`);
+async function fileToDataUri(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const contentType = file.type || "image/jpeg";
+  return `data:${contentType};base64,${buffer.toString("base64")}`;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause instanceof Error ? ` (${error.cause.message})` : "";
+    return `${error.name}: ${error.message}${cause}`;
   }
-  const data = await res.json();
-  return data.url as string;
+
+  return String(error);
 }
 
 export async function POST(req: NextRequest) {
@@ -38,18 +35,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
     }
 
-    const imageUrl = await uploadToFal(file);
     const modelId = MODEL_IDS[model];
     if (!modelId) {
       return NextResponse.json({ error: "invalid model" }, { status: 400 });
     }
 
+    const imageUrl = await fileToDataUri(file);
     const input: Record<string, unknown> = {
       image_url: imageUrl,
       prompt,
-      duration,
       resolution,
     };
+
+    if (model === "seedance") {
+      input.duration = String(duration);
+      input.aspect_ratio = "auto";
+      input.generate_audio = true;
+    } else {
+      input.duration = duration;
+      input.aspect_ratio = "auto";
+    }
 
     const res = await fetch(`https://queue.fal.run/${modelId}`, {
       method: "POST",
@@ -68,7 +73,7 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
     return NextResponse.json({ requestId: data.request_id, model });
   } catch (error) {
-    const msg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    const msg = getErrorMessage(error);
     console.error("video submit failed", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
