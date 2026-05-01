@@ -8,6 +8,7 @@ type MosaicBox = { x: number; y: number; width: number; height: number };
 type ImageSize = { width: number; height: number };
 type MosaicMode = "blur" | "gaussian" | "simple";
 type VideoModel = "grok" | "seedance";
+type EditResolution = "1k" | "2k";
 
 const NAV_ITEMS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: "generate", label: "画像生成（工事中）", icon: "*" },
@@ -35,6 +36,14 @@ export default function Home() {
   const [mosaicStrength, setMosaicStrength] = useState<(typeof STRENGTHS)[number]>("中");
   const [mosaicStage, setMosaicStage] = useState("");
   const [mosaicLoading, setMosaicLoading] = useState(false);
+
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editSrc, setEditSrc] = useState<string | null>(null);
+  const [editPrompt, setEditPrompt] = useState("背景を整えて、自然なライティングで高品質に仕上げる");
+  const [editResolution, setEditResolution] = useState<EditResolution>("1k");
+  const [editLoading, setEditLoading] = useState(false);
+  const [editResult, setEditResult] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState("");
 
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
@@ -267,6 +276,47 @@ export default function Home() {
     setVideoStatus("");
   }, []);
 
+  const handleEditUpload = useCallback((file: File) => {
+    setEditFile(file);
+    setEditSrc(URL.createObjectURL(file));
+    setEditResult(null);
+    setEditStatus("");
+  }, []);
+
+  const submitEdit = useCallback(async () => {
+    if (!editFile) return;
+
+    setEditLoading(true);
+    setEditStatus("Grok Imagine で編集中...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", editFile);
+      formData.append("prompt", editPrompt);
+      formData.append("resolution", editResolution);
+
+      const res = await fetch("/api/edit", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error ?? "編集に失敗しました");
+      }
+
+      setEditResult(data.url);
+      setEditStatus("編集が完了しました。");
+    } catch (error) {
+      setEditStatus(error instanceof Error ? error.message : "編集に失敗しました");
+    } finally {
+      setEditLoading(false);
+    }
+  }, [editFile, editPrompt, editResolution]);
+
+  const resetEdit = useCallback(() => {
+    setEditFile(null);
+    setEditSrc(null);
+    setEditResult(null);
+    setEditStatus("");
+  }, []);
+
   const submitVideo = useCallback(async () => {
     if (!videoFile) return;
     setVideoLoading(true);
@@ -378,7 +428,7 @@ export default function Home() {
         </div>
 
         <div className="main-content" style={{ flex: 1, padding: 24, overflowY: "auto" }}>
-          {(tab === "generate" || tab === "avatar" || tab === "edit" || tab === "history" || tab === "plan")
+          {(tab === "generate" || tab === "avatar" || tab === "history" || tab === "plan")
             ? renderPlaceholder(
                 NAV_ITEMS.find(item => item.id === tab)?.label ?? "LUMIVEIL",
                 "この画面は順次移植中です。まずはモザイク機能を安定させ、MediaPipe Face Landmarker と微調整UIを優先しています。"
@@ -551,6 +601,152 @@ export default function Home() {
                 <button onClick={resetMosaic} style={{ ...smallButtonStyle, width: "100%" }}>
                   リセット
                 </button>
+              </div>
+            </div>
+          ) : null}
+
+          {tab === "edit" ? (
+            <div className="layout-grid" style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 20 }}>
+              <div style={panelStyle}>
+                <div style={sectionLabelStyle}>元画像</div>
+                <label style={uploadButtonStyle}>
+                  画像を選択する
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={event => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        handleEditUpload(file);
+                      }
+                    }}
+                  />
+                </label>
+
+                {editSrc ? (
+                  <div style={{ marginTop: 14, borderRadius: 10, overflow: "hidden", background: "#000", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <img src={editSrc} alt="編集前" style={{ width: "100%", maxHeight: 360, objectFit: "contain", display: "block" }} />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      minHeight: 280,
+                      borderRadius: 12,
+                      border: "1px dashed #9b927f",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#5f5648",
+                      background: "rgba(0,0,0,0.03)",
+                      fontSize: 13,
+                    }}
+                  >
+                    画像をアップロードすると、ここにプレビューが表示されます。
+                  </div>
+                )}
+
+                {editResult ? (
+                  <div style={{ marginTop: 20 }}>
+                    <div style={{ ...sectionLabelStyle, marginBottom: 10 }}>編集後</div>
+                    <div style={{ borderRadius: 10, overflow: "hidden", background: "#000", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <img src={editResult} alt="編集後" style={{ width: "100%", maxHeight: 460, objectFit: "contain", display: "block" }} />
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                      <a
+                        href={editResult}
+                        download="grok-edit.jpg"
+                        style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: 1 }}
+                      >
+                        ダウンロード
+                      </a>
+                      <button onClick={() => setEditResult(null)} style={{ ...smallButtonStyle, flex: 1 }}>
+                        結果をクリア
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={panelStyle}>
+                  <div style={sectionLabelStyle}>モデル</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Grok Imagine Image Edit</div>
+                  <div style={{ fontSize: 12, color: "#4e4a43", lineHeight: 1.7 }}>
+                    画像をもとに、プロンプトで背景、質感、明るさ、服装や雰囲気などを編集します。
+                  </div>
+                </div>
+
+                <div style={panelStyle}>
+                  <div style={sectionLabelStyle}>プロンプト</div>
+                  <textarea
+                    value={editPrompt}
+                    onChange={event => setEditPrompt(event.target.value)}
+                    rows={5}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      background: "rgba(0,0,0,0.08)",
+                      border: "1px solid #a89e8e",
+                      color: "#111",
+                      fontSize: 12,
+                      fontFamily: "inherit",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+
+                <div style={panelStyle}>
+                  <div style={sectionLabelStyle}>解像度</div>
+                  <div style={buttonRowStyle}>
+                    {(["1k", "2k"] as EditResolution[]).map(resolution => (
+                      <button
+                        key={resolution}
+                        onClick={() => setEditResolution(resolution)}
+                        style={choiceButtonStyle(editResolution === resolution)}
+                      >
+                        {resolution}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: "#6a6258" }}>
+                    Grok Image Edit — $0.022 / image
+                  </div>
+                </div>
+
+                <div style={panelStyle}>
+                  {editStatus ? (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        fontSize: 12,
+                        color: editStatus.includes("失敗") || editStatus.includes("Error") ? "#e06060" : "#4a8a6a",
+                        background: "rgba(0,0,0,0.06)",
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                      }}
+                    >
+                      {editStatus}
+                    </div>
+                  ) : null}
+                  <button
+                    onClick={() => void submitEdit()}
+                    disabled={!editFile || !editPrompt.trim() || editLoading}
+                    style={{
+                      ...actionButtonStyle,
+                      width: "100%",
+                      opacity: !editFile || !editPrompt.trim() || editLoading ? 0.5 : 1,
+                      cursor: !editFile || !editPrompt.trim() || editLoading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {editLoading ? "編集中..." : "AI編集する"}
+                  </button>
+                  <button onClick={resetEdit} style={{ ...smallButtonStyle, width: "100%", marginTop: 10 }}>
+                    リセット
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
