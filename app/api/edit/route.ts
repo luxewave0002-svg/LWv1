@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 
 const FAL_KEY = process.env.FAL_API_KEY!;
 const GROK_EDIT_MODEL = "xai/grok-imagine-image/edit";
+const FACE_PRESERVATION_PROMPT =
+  "Keep the original person's face unchanged. Preserve identity, facial features, expression, eyes, nose, mouth, face shape, hairstyle, and skin tone. Do not beautify, replace, redraw, or alter the face.";
 
 async function fileToDataUri(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        prompt,
+        prompt: `${FACE_PRESERVATION_PROMPT}\n\n${prompt}`,
         image_urls: [imageUrl],
         num_images: 1,
         resolution,
