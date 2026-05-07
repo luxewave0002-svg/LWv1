@@ -379,6 +379,7 @@ export default function Home() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .sidebar { display: flex; }
+        .top-tabs { display: flex; }
         .bottom-nav { display: none !important; }
         @media (max-width: 820px) {
           .layout-grid { grid-template-columns: 1fr !important; }
@@ -390,25 +391,25 @@ export default function Home() {
         }
       `}</style>
 
-      <div style={{ background: "#071e28", borderBottom: "1px solid #1a3d4d", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
+      <div style={{ background: "#071e28", borderBottom: "1px solid #163645", padding: "0 16px", height: 48, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 28, height: 28, background: "linear-gradient(135deg,#c9a84c,#8b6914)", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#071e28" }}>L</div>
-          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "0.12em" }}>LUMIVEIL</span>
+          <div style={{ width: 24, height: 24, background: "#c9a84c", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: "#071e28" }}>L</div>
+          <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.1em" }}>LUMIVEIL</span>
         </div>
-        <div style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#c9a84c" }}>
+        <div style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 999, padding: "3px 10px", fontSize: 11, color: "#c9a84c" }}>
           ◆ 487 クレジット
         </div>
       </div>
 
-      <div style={{ display: "flex", minHeight: "calc(100vh - 56px)" }}>
-        <div className="sidebar" style={{ width: 200, background: "#071e28", borderRight: "1px solid #1a3d4d", flexDirection: "column", padding: "20px 0", flexShrink: 0 }}>
+      <div style={{ display: "flex", minHeight: "calc(100vh - 48px)" }}>
+        <div className="sidebar" style={{ width: 168, background: "#071e28", borderRight: "1px solid #163645", flexDirection: "column", padding: "12px 0", flexShrink: 0 }}>
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
               style={{
                 width: "100%",
-                padding: "12px 20px",
+                padding: "10px 14px",
                 border: "none",
                 background: tab === item.id ? "rgba(201,168,76,0.08)" : "transparent",
                 borderLeft: tab === item.id ? "2px solid #c9a84c" : "2px solid transparent",
@@ -416,18 +417,42 @@ export default function Home() {
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                fontSize: 13,
+                gap: 8,
+                fontSize: 12,
                 textAlign: "left",
               }}
             >
-              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              <span style={{ fontSize: 14, width: 16, textAlign: "center" }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
         </div>
 
-        <div className="main-content" style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+        <div className="main-content" style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+          <div className="top-tabs" style={{ gap: 8, overflowX: "auto", paddingBottom: 12, marginBottom: 4 }}>
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id)}
+                style={{
+                  flex: "0 0 auto",
+                  minWidth: item.id === "video" ? 92 : 72,
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: tab === item.id ? "1px solid #c9a84c" : "1px solid rgba(201,168,76,0.22)",
+                  background: tab === item.id ? "#c9a84c" : "rgba(255,255,255,0.04)",
+                  color: tab === item.id ? "#071e28" : "#d8dde0",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.id === "video" ? "動画生成" : item.mobileLabel}
+              </button>
+            ))}
+          </div>
+
           {(tab === "generate" || tab === "avatar" || tab === "history" || tab === "plan")
             ? renderPlaceholder(
                 NAV_ITEMS.find(item => item.id === tab)?.label ?? "LUMIVEIL",
@@ -984,16 +1009,16 @@ function PreviewCard({ label, src }: { label: string; src: string }) {
 }
 
 const panelStyle: CSSProperties = {
-  background: "#c8c2b4",
-  borderRadius: 12,
-  padding: 18,
-  border: "1px solid #a89e8e",
+  background: "#d0cabd",
+  borderRadius: 8,
+  padding: 14,
+  border: "1px solid #9f9686",
 };
 
 const sectionLabelStyle: CSSProperties = {
-  fontSize: 11,
+  fontSize: 10,
   color: "#444",
-  marginBottom: 8,
+  marginBottom: 7,
   letterSpacing: "0.05em",
   fontWeight: 700,
 };
@@ -1004,13 +1029,13 @@ const uploadButtonStyle: CSSProperties = {
   justifyContent: "center",
   gap: 8,
   width: "100%",
-  padding: "12px 0",
+  padding: "10px 0",
   borderRadius: 8,
   background: "#b0a898",
   border: "1px solid #a89e8e",
   color: "#111",
   fontWeight: 700,
-  fontSize: 13,
+  fontSize: 12,
   cursor: "pointer",
 };
 
@@ -1023,7 +1048,7 @@ const buttonRowStyle: CSSProperties = {
 const choiceButtonStyle = (active: boolean): CSSProperties => ({
   flex: 1,
   minWidth: 88,
-  padding: "10px 0",
+  padding: "8px 0",
   borderRadius: 8,
   background: active ? "rgba(201,168,76,0.3)" : "rgba(0,0,0,0.06)",
   border: active ? "1px solid #c9a84c" : "1px solid #a89e8e",
@@ -1035,23 +1060,23 @@ const choiceButtonStyle = (active: boolean): CSSProperties => ({
 
 const actionButtonStyle: CSSProperties = {
   flex: 1,
-  padding: "12px 0",
+  padding: "10px 0",
   borderRadius: 8,
-  background: "linear-gradient(135deg, #c9a84c, #8b6914)",
+  background: "#c9a84c",
   border: "none",
   color: "#071e28",
   fontWeight: 700,
-  fontSize: 13,
+  fontSize: 12,
   cursor: "pointer",
 };
 
 const smallButtonStyle: CSSProperties = {
-  padding: "10px 12px",
+  padding: "8px 10px",
   borderRadius: 8,
   background: "#b0a898",
   border: "1px solid #a89e8e",
   color: "#111",
   fontWeight: 700,
-  fontSize: 12,
+  fontSize: 11,
   cursor: "pointer",
 };
