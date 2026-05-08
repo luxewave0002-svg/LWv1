@@ -694,7 +694,7 @@ export default function Home() {
                           <strong style={{ fontWeight: 500 }}>約{Math.floor(pack.credits / VIDEO_CREDITS_ESTIMATE).toLocaleString("ja-JP")}本</strong>
                         </div>
                         <div style={{ marginTop: 6, fontSize: 10, color: "#6a6258", lineHeight: 1.5 }}>
-                          動画はGrok 5秒生成の概算
+                          画質・動画サイズ・動画の長さによって異なります。
                         </div>
                       </div>
                       <div style={{ marginTop: "auto", paddingTop: 18 }}>
