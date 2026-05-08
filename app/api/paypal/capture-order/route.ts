@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { TOPUP_PACKS, type TopupPackId } from "@/lib/credit-packs";
 import { capturePayPalOrder } from "@/lib/paypal";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+async function getAuthenticatedUser(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (token) {
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (user) return user;
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const { data: { user } } = await cookieSupabase.auth.getUser();
+  return user;
+}
 
 async function isAlreadyProcessed(orderId: string) {
   const { data } = await supabase
@@ -25,13 +38,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "orderId is required" }, { status: 400 });
     }
 
-    const token = req.headers.get("authorization")?.replace("Bearer ", "");
-    if (!token) {
-      return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
-    }
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token!);
-    if (authError || !user) {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
       return NextResponse.json({ error: "ログイン状態が切れています。もう一度ログインしてください。" }, { status: 401 });
     }
 

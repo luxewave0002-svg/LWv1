@@ -383,16 +383,12 @@ export default function Home() {
     setTopupStatus("PayPal決済ページを準備中...");
     try {
       const token = await getAuthToken();
-      if (!token) {
-        throw new Error("ログインが必要です。");
-      }
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
 
       const res = await fetch("/api/paypal/create-order", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({ packId }),
       });
       const data = await res.json();
@@ -632,16 +628,12 @@ export default function Home() {
     void (async () => {
       try {
         const token = await getAuthToken();
-        if (!token) {
-          throw new Error("ログインが必要です。");
-        }
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers.Authorization = `Bearer ${token}`;
 
         const res = await fetch("/api/paypal/capture-order", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
           body: JSON.stringify({ orderId }),
         });
         const data = await res.json();
