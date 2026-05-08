@@ -91,6 +91,7 @@ export default function Home() {
   const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyStatus, setHistoryStatus] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
   const buildRegionBox = useCallback((regions: FaceRegions, area: (typeof AREAS)[number]) => {
     if (area === "目元のみ") {
@@ -372,6 +373,12 @@ export default function Home() {
     }
   }, [getAuthToken]);
 
+  const loadCurrentUser = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+    setUserEmail(data.user?.email ?? "");
+  }, []);
+
   const handleLogout = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -606,6 +613,10 @@ export default function Home() {
   }, [loadCredits]);
 
   useEffect(() => {
+    void loadCurrentUser();
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paypalStatus = params.get("paypal");
     const orderId = params.get("token");
@@ -686,6 +697,21 @@ export default function Home() {
           <div style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 999, padding: "3px 10px", fontSize: 11, color: "#c9a84c" }}>
             ◆ {credits == null ? "--" : credits.toLocaleString("ja-JP")} クレジット
           </div>
+          {userEmail ? (
+            <div
+              title={userEmail}
+              style={{
+                maxWidth: 220,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                color: "#b8c0c4",
+                fontSize: 11,
+              }}
+            >
+              {userEmail}
+            </div>
+          ) : null}
           <button
             onClick={() => void handleLogout()}
             style={{
