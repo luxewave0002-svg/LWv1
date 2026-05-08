@@ -464,10 +464,6 @@ export default function Home() {
             <div className="layout-grid" style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 20 }}>
               <div style={panelStyle}>
                 <div style={sectionLabelStyle}>プレビュー</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>MediaPipe Face Landmarker</div>
-                <div style={{ fontSize: 12, color: "#4e4a43", marginBottom: 14 }}>
-                  顔輪郭、目元、口元の領域を検出し、必要なら手動で微調整してからブラーやガウスを適用できます。
-                </div>
 
                 <label style={uploadButtonStyle}>
                   画像を選択する
