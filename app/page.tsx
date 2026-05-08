@@ -372,6 +372,12 @@ export default function Home() {
     }
   }, [getAuthToken]);
 
+  const handleLogout = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }, []);
+
   const startTopupCheckout = useCallback(async (packId: TopupPackId) => {
     setTopupLoadingPack(packId);
     setTopupStatus("PayPal決済ページを準備中...");
@@ -684,8 +690,26 @@ export default function Home() {
           <div style={{ width: 24, height: 24, background: "#c9a84c", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#071e28" }}>L</div>
           <span style={{ fontSize: 14, fontWeight: 500, letterSpacing: "0.08em" }}>LUMIVEIL</span>
         </div>
-        <div style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 999, padding: "3px 10px", fontSize: 11, color: "#c9a84c" }}>
-          ◆ {credits == null ? "--" : credits.toLocaleString("ja-JP")} クレジット
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 999, padding: "3px 10px", fontSize: 11, color: "#c9a84c" }}>
+            ◆ {credits == null ? "--" : credits.toLocaleString("ja-JP")} クレジット
+          </div>
+          <button
+            onClick={() => void handleLogout()}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.04)",
+              color: "#b8c0c4",
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            ログアウト
+          </button>
         </div>
       </div>
 
