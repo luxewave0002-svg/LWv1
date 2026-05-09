@@ -93,6 +93,7 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyStatus, setHistoryStatus] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const buildRegionBox = useCallback((regions: FaceRegions, area: (typeof AREAS)[number]) => {
     if (area === "目元のみ") {
@@ -683,19 +684,44 @@ export default function Home() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .sidebar { display: flex; }
-        .bottom-nav { display: none !important; }
+        .mobile-menu-button { display: none !important; }
+        .mobile-email { display: block; }
         @media (max-width: 820px) {
           .layout-grid { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 680px) {
           .sidebar { display: none !important; }
-          .bottom-nav { display: flex !important; position: fixed; bottom: 0; left: 0; right: 0; background: #0a2535; border-top: 1px solid #1a3d4d; z-index: 100; }
-          .main-content { padding-bottom: 80px !important; }
+          .mobile-menu-button { display: inline-flex !important; }
+          .mobile-email { display: none !important; }
+          .main-content { padding-bottom: 18px !important; }
         }
       `}</style>
 
       <div style={{ background: "#071e28", borderBottom: "1px solid #163645", padding: "0 16px", height: 48, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            className="mobile-menu-button"
+            aria-label="メニューを開く"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(current => !current)}
+            style={{
+              width: 32,
+              height: 32,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+              border: "1px solid rgba(201,168,76,0.28)",
+              background: "rgba(255,255,255,0.04)",
+              color: "#f0ece4",
+              cursor: "pointer",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <span style={{ width: 15, height: 1, background: "currentColor", display: "block" }} />
+            <span style={{ width: 15, height: 1, background: "currentColor", display: "block" }} />
+            <span style={{ width: 15, height: 1, background: "currentColor", display: "block" }} />
+          </button>
           <div style={{ width: 24, height: 24, background: "#c9a84c", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#071e28" }}>L</div>
           <span style={{ fontSize: 14, fontWeight: 500, letterSpacing: "0.08em" }}>LUMIVEIL</span>
         </div>
@@ -705,6 +731,7 @@ export default function Home() {
           </div>
           {userEmail ? (
             <div
+              className="mobile-email"
               title={userEmail}
               style={{
                 maxWidth: 220,
@@ -736,6 +763,59 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {mobileMenuOpen ? (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.46)",
+            zIndex: 80,
+          }}
+        >
+          <nav
+            aria-label="スマホメニュー"
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: "min(82vw, 300px)",
+              height: "100%",
+              background: "#071e28",
+              borderRight: "1px solid #163645",
+              padding: "64px 0 18px",
+              boxShadow: "18px 0 42px rgba(0,0,0,0.32)",
+            }}
+          >
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setTab(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "13px 18px",
+                  border: "none",
+                  background: tab === item.id ? "rgba(201,168,76,0.1)" : "transparent",
+                  borderLeft: tab === item.id ? "3px solid #c9a84c" : "3px solid transparent",
+                  color: tab === item.id ? "#c9a84c" : "#d8dde0",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  fontSize: 14,
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span style={{ fontSize: 15, width: 18, textAlign: "center" }}>{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      ) : null}
 
       <div style={{ display: "flex", minHeight: "calc(100vh - 48px)" }}>
         <div className="sidebar" style={{ width: 168, background: "#071e28", borderRight: "1px solid #163645", flexDirection: "column", padding: "12px 0", flexShrink: 0 }}>
@@ -1629,31 +1709,6 @@ export default function Home() {
           </div>
         </div>
       ) : null}
-
-      <div className="bottom-nav" style={{ justifyContent: "space-around" }}>
-        {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setTab(item.id)}
-            style={{
-              flex: 1,
-              padding: "10px 0",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              color: tab === item.id ? "#c9a84c" : "#7e8d94",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 3,
-              borderTop: tab === item.id ? "2px solid #c9a84c" : "2px solid transparent",
-            }}
-          >
-            <span style={{ fontSize: 18 }}>{item.icon}</span>
-            <span style={{ fontSize: 9 }}>{item.mobileLabel}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
