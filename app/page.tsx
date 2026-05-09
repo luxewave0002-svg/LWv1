@@ -1042,7 +1042,7 @@ export default function Home() {
                           <input
                             value={trialInviteCode}
                             onChange={event => setTrialInviteCode(event.target.value)}
-                            placeholder="lumilumi2026"
+                            placeholder="招待コードを入力"
                             style={{
                               width: "100%",
                               padding: "9px 10px",
