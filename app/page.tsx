@@ -683,7 +683,6 @@ export default function Home() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .sidebar { display: flex; }
-        .top-tabs { display: flex; }
         .bottom-nav { display: none !important; }
         @media (max-width: 820px) {
           .layout-grid { grid-template-columns: 1fr !important; }
@@ -766,30 +765,6 @@ export default function Home() {
         </div>
 
         <div className="main-content" style={{ flex: 1, padding: 16, overflowY: "auto" }}>
-          <div className="top-tabs" style={{ gap: 8, overflowX: "auto", paddingBottom: 12, marginBottom: 4 }}>
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setTab(item.id)}
-                style={{
-                  flex: "0 0 auto",
-                  minWidth: item.id === "video" ? 92 : 72,
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  border: tab === item.id ? "1px solid #c9a84c" : "1px solid rgba(201,168,76,0.22)",
-                  background: tab === item.id ? "#c9a84c" : "rgba(255,255,255,0.04)",
-                  color: tab === item.id ? "#071e28" : "#d8dde0",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {item.id === "video" ? "動画生成" : item.mobileLabel}
-              </button>
-            ))}
-          </div>
-
           {tab === "generate"
             ? renderPlaceholder(
                 NAV_ITEMS.find(item => item.id === tab)?.label ?? "LUMIVEIL",
