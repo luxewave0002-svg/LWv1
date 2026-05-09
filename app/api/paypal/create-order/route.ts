@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "無効なチャージパックです" }, { status: 400 });
     }
 
+    if (pack.amount <= 0) {
+      return NextResponse.json({ error: "このプランは招待コードで適用してください" }, { status: 400 });
+    }
+
     if (pack.requiresInviteCode && String(inviteCode ?? "").trim() !== TRIAL_INVITE_CODE) {
       return NextResponse.json({ error: "招待コードが正しくありません" }, { status: 403 });
     }

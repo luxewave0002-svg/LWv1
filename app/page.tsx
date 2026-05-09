@@ -392,9 +392,9 @@ export default function Home() {
 
   const startTopupCheckout = useCallback(async (packId: TopupPackId) => {
     setTopupLoadingPack(packId);
-    setTopupStatus("PayPal決済ページを準備中...");
+    const pack = TOPUP_PACKS[packId];
+    setTopupStatus(pack.requiresInviteCode ? "招待コードを確認中..." : "PayPal決済ページを準備中...");
     try {
-      const pack = TOPUP_PACKS[packId];
       const inviteCode = pack.requiresInviteCode ? trialInviteCode.trim() : undefined;
       if (pack.requiresInviteCode && !inviteCode) {
         throw new Error("お試しプランは招待コードを入力してください。");
@@ -403,6 +403,23 @@ export default function Home() {
       const token = await getAuthToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers.Authorization = `Bearer ${token}`;
+
+      if (pack.requiresInviteCode) {
+        const res = await fetch("/api/invite/redeem", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ inviteCode }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error ?? "招待コードを適用できませんでした");
+        }
+
+        setCredits(Number(data.credits ?? 0));
+        setTopupStatus(data.alreadyRedeemed ? "この招待コードは適用済みです。" : "無料お試しクレジットを付与しました。");
+        setTopupLoadingPack(null);
+        return;
+      }
 
       const res = await fetch("/api/paypal/create-order", {
         method: "POST",
@@ -1026,11 +1043,15 @@ export default function Home() {
                       <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.08)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#171717", marginBottom: 6 }}>
                           <span>写真</span>
-                          <strong style={{ fontWeight: 500 }}>約{Math.floor(pack.credits / PHOTO_CREDITS_ESTIMATE).toLocaleString("ja-JP")}枚</strong>
+                          <strong style={{ fontWeight: 500 }}>
+                            約{(pack.freeImageGenerations ?? Math.floor(pack.credits / PHOTO_CREDITS_ESTIMATE)).toLocaleString("ja-JP")}枚
+                          </strong>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, color: "#171717" }}>
                           <span>動画</span>
-                          <strong style={{ fontWeight: 500 }}>約{Math.floor(pack.credits / VIDEO_CREDITS_ESTIMATE).toLocaleString("ja-JP")}本</strong>
+                          <strong style={{ fontWeight: 500 }}>
+                            約{(pack.freeVideoGenerations ?? Math.floor(pack.credits / VIDEO_CREDITS_ESTIMATE)).toLocaleString("ja-JP")}本
+                          </strong>
                         </div>
                         <div style={{ marginTop: 6, fontSize: 10, color: "#6a6258", lineHeight: 1.5 }}>
                           画質・動画サイズ・動画の長さによって異なります。
@@ -1059,13 +1080,8 @@ export default function Home() {
                       ) : null}
                       <div style={{ marginTop: "auto", paddingTop: 18 }}>
                         <div style={{ marginBottom: 10 }}>
-                          {pack.originalAmount ? (
-                            <div style={{ fontSize: 11, color: "#6a6258", textDecoration: "line-through", marginBottom: 2 }}>
-                              ¥{pack.originalAmount.toLocaleString("ja-JP")}
-                            </div>
-                          ) : null}
                           <div style={{ fontSize: 16, fontWeight: 500, color: "#111" }}>
-                            ¥{pack.amount.toLocaleString("ja-JP")}
+                            {pack.amount === 0 ? "無料" : `¥${pack.amount.toLocaleString("ja-JP")}`}
                           </div>
                         </div>
                         <button
@@ -1078,7 +1094,7 @@ export default function Home() {
                             cursor: topupLoadingPack != null ? "not-allowed" : "pointer",
                           }}
                         >
-                          {topupLoadingPack === pack.id ? "準備中..." : "PayPalでチャージ"}
+                          {topupLoadingPack === pack.id ? "準備中..." : pack.requiresInviteCode ? "無料クレジットを受け取る" : "PayPalでチャージ"}
                         </button>
                       </div>
                     </div>
