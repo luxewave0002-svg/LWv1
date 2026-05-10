@@ -8,6 +8,7 @@ const supabase = createClient(
 );
 
 const ADMIN_HISTORY_LIMIT = 100;
+const HISTORY_PREFIX = "LUMIVEIL_HISTORY::";
 
 function getAdminEmails() {
   return (process.env.ADMIN_EMAILS ?? "")
@@ -32,7 +33,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("generation_history")
-      .select("id, shop_id, avatar_id, prompt, generated_image_url, credits_used, created_at")
+      .select("id, shop_id, avatar_id, prompt, credits_used, created_at")
       .order("created_at", { ascending: false })
       .limit(ADMIN_HISTORY_LIMIT);
 
@@ -40,10 +41,41 @@ export async function GET() {
       throw new Error(error.message);
     }
 
-    return NextResponse.json({ history: data ?? [], limit: ADMIN_HISTORY_LIMIT });
+    const history = (data ?? []).map(item => {
+      const parsed = parseHistoryPrompt(item.prompt);
+      return {
+        ...item,
+        prompt: parsed.prompt,
+        generated_image_url: parsed.url,
+        media_type: parsed.kind,
+      };
+    });
+
+    return NextResponse.json({ history, limit: ADMIN_HISTORY_LIMIT });
   } catch (error) {
     const message = error instanceof Error ? error.message : "管理者履歴を取得できませんでした";
     console.error("admin history fetch failed", message);
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+function parseHistoryPrompt(prompt: string | null) {
+  if (!prompt?.startsWith(HISTORY_PREFIX)) {
+    return { prompt, url: "", kind: "image" };
+  }
+
+  try {
+    const parsed = JSON.parse(prompt.slice(HISTORY_PREFIX.length)) as {
+      prompt?: string;
+      url?: string;
+      kind?: string;
+    };
+    return {
+      prompt: parsed.prompt ?? null,
+      url: parsed.url ?? "",
+      kind: parsed.kind === "video" ? "video" : "image",
+    };
+  } catch {
+    return { prompt, url: "", kind: "image" };
   }
 }

@@ -8,6 +8,7 @@ type AdminHistoryItem = {
   avatar_id: string | null;
   prompt: string | null;
   generated_image_url: string;
+  media_type?: "image" | "video";
   credits_used: number | null;
   created_at: string;
 };
@@ -76,12 +77,17 @@ export default function AdminPage() {
         ) : items.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 14 }}>
             {items.map(item => {
-              const isVideo = isVideoHistoryUrl(item.generated_image_url);
+              const hasMedia = Boolean(item.generated_image_url);
+              const isVideo = item.media_type === "video" || isVideoHistoryUrl(item.generated_image_url);
 
               return (
               <article key={item.id} style={{ ...panelStyle, padding: 0, overflow: "hidden" }}>
                 <div style={{ display: "block", aspectRatio: "3 / 4", background: "#111", overflow: "hidden" }}>
-                  {isVideo ? (
+                  {!hasMedia ? (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: 12, padding: 16, textAlign: "center" }}>
+                      メディアURL未保存
+                    </div>
+                  ) : isVideo ? (
                     <video src={item.generated_image_url} controls muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                   ) : (
                     <a href={item.generated_image_url} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%", height: "100%" }}>

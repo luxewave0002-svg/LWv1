@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const FAL_KEY = process.env.FAL_API_KEY!;
+const HISTORY_PREFIX = "LUMIVEIL_HISTORY::";
 
 const MODEL_IDS: Record<string, string> = {
   grok: "xai/grok-imagine-video/image-to-video",
@@ -74,28 +75,35 @@ async function saveVideoHistory({
     .eq("user_id", userId)
     .maybeSingle();
   const shopId = shop?.id ?? userId;
+  const historyPrompt = encodeHistoryPrompt({
+    kind: "video",
+    prompt: `${model === "seedance" ? "Seedance動画" : "Grok動画"}: ${prompt}`,
+    url: videoUrl,
+  });
 
   const { data: existing } = await client
     .from("generation_history")
     .select("id")
     .eq("shop_id", shopId)
-    .eq("generated_image_url", videoUrl)
+    .eq("prompt", historyPrompt)
     .maybeSingle();
 
   if (existing) return;
 
-  const label = model === "seedance" ? "Seedance動画" : "Grok動画";
   const { error } = await client.from("generation_history").insert({
     shop_id: shopId,
     avatar_id: null,
-    prompt: `${label}: ${prompt}`,
-    generated_image_url: videoUrl,
+    prompt: historyPrompt,
     credits_used: creditsUsed,
   });
 
   if (error) {
     console.error("video history insert failed", error.message);
   }
+}
+
+function encodeHistoryPrompt(input: { kind: "image" | "video"; prompt: string; url: string }) {
+  return `${HISTORY_PREFIX}${JSON.stringify(input)}`;
 }
 
 export async function POST(req: NextRequest) {

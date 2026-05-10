@@ -6,6 +6,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+const HISTORY_PREFIX = "LUMIVEIL_HISTORY::";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,8 +30,7 @@ export async function POST(req: NextRequest) {
     await supabase.from("generation_history").insert({
       shop_id: shop?.id ?? user.id,
       avatar_id: avatarId || null,
-      prompt,
-      generated_image_url: generatedUrl,
+      prompt: `${HISTORY_PREFIX}${JSON.stringify({ kind: "image", prompt, url: generatedUrl })}`,
       credits_used: 1,
     });
 

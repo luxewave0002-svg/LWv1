@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const USER_HISTORY_LIMIT = 50;
+const HISTORY_PREFIX = "LUMIVEIL_HISTORY::";
 
 function createBearerSupabaseClient(token: string) {
   return createClient(
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
     const shopIds = Array.from(new Set([user.id, shop?.id].filter(Boolean)));
     const { data, error } = await client
       .from("generation_history")
-      .select("id, avatar_id, prompt, generated_image_url, credits_used, created_at")
+      .select("id, avatar_id, prompt, credits_used, created_at")
       .in("shop_id", shopIds)
       .order("created_at", { ascending: false })
       .limit(USER_HISTORY_LIMIT);
@@ -57,10 +58,41 @@ export async function GET(req: NextRequest) {
       throw new Error(error.message);
     }
 
-    return NextResponse.json({ history: data ?? [], limit: USER_HISTORY_LIMIT });
+    const history = (data ?? []).map(item => {
+      const parsed = parseHistoryPrompt(item.prompt);
+      return {
+        ...item,
+        prompt: parsed.prompt,
+        generated_image_url: parsed.url,
+        media_type: parsed.kind,
+      };
+    });
+
+    return NextResponse.json({ history, limit: USER_HISTORY_LIMIT });
   } catch (error) {
     const message = error instanceof Error ? error.message : "履歴を取得できませんでした";
     console.error("history fetch failed", message);
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+function parseHistoryPrompt(prompt: string | null) {
+  if (!prompt?.startsWith(HISTORY_PREFIX)) {
+    return { prompt, url: "", kind: "image" };
+  }
+
+  try {
+    const parsed = JSON.parse(prompt.slice(HISTORY_PREFIX.length)) as {
+      prompt?: string;
+      url?: string;
+      kind?: string;
+    };
+    return {
+      prompt: parsed.prompt ?? null,
+      url: parsed.url ?? "",
+      kind: parsed.kind === "video" ? "video" : "image",
+    };
+  } catch {
+    return { prompt, url: "", kind: "image" };
   }
 }

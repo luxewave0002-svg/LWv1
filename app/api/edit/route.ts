@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 
 const FAL_KEY = process.env.FAL_API_KEY!;
 const GROK_EDIT_MODEL = "xai/grok-imagine-image/edit";
+const HISTORY_PREFIX = "LUMIVEIL_HISTORY::";
 const FACE_PRESERVATION_PROMPT =
   "Identity lock: preserve the exact same person from the input image. Keep the face, facial structure, eyes, nose, mouth, jawline, expression, hairstyle, hairline, skin tone, age, and body proportions unchanged. Do not beautify, replace, redraw, stylize, retouch, or reinterpret the face. Edit only the requested non-identity details and keep the image photorealistic.";
 const WATERMARK_REMOVAL_PROMPT =
@@ -83,14 +84,21 @@ async function saveGenerationHistory(client: SupabaseClient, userId: string, pro
   const { error } = await client.from("generation_history").insert({
     shop_id: shop?.id ?? userId,
     avatar_id: null,
-    prompt: `AI編集: ${prompt}`,
-    generated_image_url: generatedUrl,
+    prompt: encodeHistoryPrompt({
+      kind: "image",
+      prompt: `AI編集: ${prompt}`,
+      url: generatedUrl,
+    }),
     credits_used: 1,
   });
 
   if (error) {
     console.error("edit history insert failed", error.message);
   }
+}
+
+function encodeHistoryPrompt(input: { kind: "image" | "video"; prompt: string; url: string }) {
+  return `${HISTORY_PREFIX}${JSON.stringify(input)}`;
 }
 
 export async function POST(req: NextRequest) {
