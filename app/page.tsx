@@ -45,11 +45,74 @@ const RESIZE_STEP = 4;
 const PHOTO_CREDITS_ESTIMATE = 1;
 const VIDEO_CREDITS_ESTIMATE = 8;
 const MAX_AVATARS = 200;
+const LOCAL_HISTORY_LIMIT = 50;
 const TOPUP_PACK_LIST = Object.entries(TOPUP_PACKS).map(([id, pack]) => ({ id: id as TopupPackId, ...pack }));
 
 function isVideoHistoryUrl(url: string) {
   const cleanUrl = url.split("?")[0].toLowerCase();
   return cleanUrl.endsWith(".mp4") || cleanUrl.endsWith(".webm") || cleanUrl.endsWith(".mov");
+}
+
+function getLocalHistoryKeys(email: string) {
+  return [
+    "lumiveil:generation-history:default",
+    email ? `lumiveil:generation-history:${email.toLowerCase()}` : "",
+  ].filter(Boolean);
+}
+
+function loadLocalHistory(email: string): GenerationHistoryItem[] {
+  if (typeof window === "undefined") return [];
+
+  const seen = new Set<string>();
+  const items = getLocalHistoryKeys(email).flatMap(key => {
+    try {
+      return JSON.parse(window.localStorage.getItem(key) ?? "[]") as GenerationHistoryItem[];
+    } catch {
+      return [];
+    }
+  });
+
+  return items
+    .filter(item => {
+      const uniqueKey = item.generated_image_url || item.id;
+      if (!uniqueKey || seen.has(uniqueKey)) return false;
+      seen.add(uniqueKey);
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, LOCAL_HISTORY_LIMIT);
+}
+
+function saveLocalHistory(email: string, item: Omit<GenerationHistoryItem, "id" | "avatar_id" | "created_at">) {
+  if (typeof window === "undefined" || !item.generated_image_url) return;
+
+  const key = email ? `lumiveil:generation-history:${email.toLowerCase()}` : "lumiveil:generation-history:default";
+  const current = loadLocalHistory(email);
+  const nextItem: GenerationHistoryItem = {
+    ...item,
+    id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    avatar_id: null,
+    created_at: new Date().toISOString(),
+  };
+  const next = [
+    nextItem,
+    ...current.filter(historyItem => historyItem.generated_image_url !== item.generated_image_url),
+  ].slice(0, LOCAL_HISTORY_LIMIT);
+
+  window.localStorage.setItem(key, JSON.stringify(next));
+}
+
+function mergeHistoryItems(remoteItems: GenerationHistoryItem[], localItems: GenerationHistoryItem[]) {
+  const seen = new Set<string>();
+  return [...remoteItems, ...localItems]
+    .filter(item => {
+      const uniqueKey = item.generated_image_url || item.id;
+      if (!uniqueKey || seen.has(uniqueKey)) return false;
+      seen.add(uniqueKey);
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, LOCAL_HISTORY_LIMIT);
 }
 
 export default function Home() {
@@ -361,6 +424,7 @@ export default function Home() {
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
     setHistoryStatus("");
+    const localHistory = loadLocalHistory(userEmail);
     try {
       const token = await getAuthToken();
       const headers: Record<string, string> = {};
@@ -377,14 +441,15 @@ export default function Home() {
         throw new Error(data.error ?? "履歴を取得できませんでした");
       }
 
-      setHistoryItems(data.history ?? []);
+      const merged = mergeHistoryItems(data.history ?? [], localHistory);
+      setHistoryItems(merged);
     } catch (error) {
-      setHistoryItems([]);
+      setHistoryItems(localHistory);
       setHistoryStatus(error instanceof Error ? error.message : "履歴を取得できませんでした");
     } finally {
       setHistoryLoading(false);
     }
-  }, [getAuthToken]);
+  }, [getAuthToken, userEmail]);
 
   const loadCurrentUser = useCallback(async () => {
     const supabase = createClient();
@@ -565,13 +630,19 @@ export default function Home() {
       }
 
       setEditResult(data.url);
+      saveLocalHistory(userEmail, {
+        prompt: `AI編集: ${editPrompt}`,
+        generated_image_url: data.url,
+        media_type: "image",
+        credits_used: 1,
+      });
       setEditStatus("編集が完了しました。");
     } catch (error) {
       setEditStatus(error instanceof Error ? error.message : "編集に失敗しました");
     } finally {
       setEditLoading(false);
     }
-  }, [editFile, editPrompt, editResolution]);
+  }, [editFile, editPrompt, editResolution, userEmail]);
 
   const resetEdit = useCallback(() => {
     setEditFile(null);
@@ -624,6 +695,12 @@ export default function Home() {
           clearInterval(videoPollRef.current!);
           setVideoRequestId(null);
           setVideoResult(data.videoUrl);
+          saveLocalHistory(userEmail, {
+            prompt: `${videoModel === "seedance" ? "Seedance動画" : "Grok動画"}: ${videoPrompt}`,
+            generated_image_url: data.videoUrl,
+            media_type: "video",
+            credits_used: videoModel === "seedance" ? Math.max(1, Math.round(videoDuration * 2)) : Math.max(1, Math.round(videoDuration * (videoResolution === "480p" ? 1 : 2))),
+          });
           setVideoLoading(false);
           setVideoStatus("完成！");
         } else if (data.status === "failed") {
@@ -655,7 +732,7 @@ export default function Home() {
     void pollVideoStatus();
     videoPollRef.current = setInterval(() => void pollVideoStatus(), 5000);
     return () => { if (videoPollRef.current) clearInterval(videoPollRef.current); };
-  }, [videoRequestId, videoModel]);
+  }, [videoDuration, videoModel, videoPrompt, videoRequestId, videoResolution, userEmail]);
 
   useEffect(() => {
     if (tab === "avatar") {
