@@ -1177,7 +1177,7 @@ export default function Home() {
               fontFamily: "inherit",
             }}
           >
-            ユーザー
+            マイページ
           </button>
           {userEmail ? (
             <div
