@@ -1101,6 +1101,22 @@ export default function Home() {
           <div style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 999, padding: "3px 10px", fontSize: 11, color: "#c9a84c" }}>
             ◆ {credits == null ? "--" : credits.toLocaleString("ja-JP")} クレジット
           </div>
+          <button
+            onClick={() => { window.location.href = "/account"; }}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(201,168,76,0.25)",
+              background: "rgba(201,168,76,0.08)",
+              color: "#c9a84c",
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            ユーザー
+          </button>
           {userEmail ? (
             <div
               className="mobile-email"
