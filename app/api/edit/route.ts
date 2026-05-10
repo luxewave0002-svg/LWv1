@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fal } from "@fal-ai/client";
+import { createClient } from "@supabase/supabase-js";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
 const FAL_KEY = process.env.FAL_API_KEY!;
 const GROK_EDIT_MODEL = "xai/grok-imagine-image/edit";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 const FACE_PRESERVATION_PROMPT =
   "Identity lock: preserve the exact same person from the input image. Keep the face, facial structure, eyes, nose, mouth, jawline, expression, hairstyle, hairline, skin tone, age, and body proportions unchanged. Do not beautify, replace, redraw, stylize, retouch, or reinterpret the face. Edit only the requested non-identity details and keep the image photorealistic.";
 const WATERMARK_REMOVAL_PROMPT =
@@ -44,6 +50,38 @@ function getFalEditError(status: number, body: string) {
 
   const redacted = message.replace(/data:image\/[^"'\s]+/g, "[uploaded image]");
   return `Grok編集に失敗しました。(${status}) ${redacted.slice(0, 240)}`;
+}
+
+async function getAuthenticatedUser(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (token) {
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (user) return user;
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const { data: { user } } = await cookieSupabase.auth.getUser();
+  return user;
+}
+
+async function saveGenerationHistory(userId: string, prompt: string, generatedUrl: string) {
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const { error } = await supabase.from("generation_history").insert({
+    shop_id: shop?.id ?? userId,
+    avatar_id: null,
+    prompt: `AI編集: ${prompt}`,
+    generated_image_url: generatedUrl,
+    credits_used: 1,
+  });
+
+  if (error) {
+    console.error("edit history insert failed", error.message);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -94,6 +132,11 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     const url = data.images?.[0]?.url;
     if (!url) throw new Error("URL not found");
+
+    const user = await getAuthenticatedUser(req);
+    if (user) {
+      await saveGenerationHistory(user.id, prompt, url);
+    }
 
     return NextResponse.json({ url, revisedPrompt: data.revised_prompt ?? "" });
   } catch (error) {

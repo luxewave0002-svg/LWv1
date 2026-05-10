@@ -12,6 +12,11 @@ type AdminHistoryItem = {
   created_at: string;
 };
 
+function isVideoHistoryUrl(url: string) {
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  return cleanUrl.endsWith(".mp4") || cleanUrl.endsWith(".webm") || cleanUrl.endsWith(".mov");
+}
+
 export default function AdminPage() {
   const [items, setItems] = useState<AdminHistoryItem[]>([]);
   const [limit, setLimit] = useState(100);
@@ -48,8 +53,8 @@ export default function AdminPage() {
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ color: "#c9a84c", fontSize: 11, letterSpacing: "0.08em", fontWeight: 500, marginBottom: 6 }}>LUMIVEIL ADMIN</div>
-            <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>生成画像履歴</h1>
-            <p style={{ marginTop: 6, color: "#9ba8ae", fontSize: 13 }}>管理者は全ユーザーの生成画像を最新{limit}件まで確認できます。</p>
+            <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>生成履歴</h1>
+            <p style={{ marginTop: 6, color: "#9ba8ae", fontSize: 13 }}>管理者は全ユーザーの生成画像・動画を最新{limit}件まで確認できます。</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <a href="/admin/accounts" style={smallButtonStyle}>アカウント管理</a>
@@ -70,11 +75,20 @@ export default function AdminPage() {
           <div style={panelStyle}>読み込み中...</div>
         ) : items.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 14 }}>
-            {items.map(item => (
+            {items.map(item => {
+              const isVideo = isVideoHistoryUrl(item.generated_image_url);
+
+              return (
               <article key={item.id} style={{ ...panelStyle, padding: 0, overflow: "hidden" }}>
-                <a href={item.generated_image_url} target="_blank" rel="noreferrer" style={{ display: "block", aspectRatio: "3 / 4", background: "#111" }}>
-                  <img src={item.generated_image_url} alt={item.prompt ?? "生成画像"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                </a>
+                <div style={{ display: "block", aspectRatio: "3 / 4", background: "#111", overflow: "hidden" }}>
+                  {isVideo ? (
+                    <video src={item.generated_image_url} controls muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <a href={item.generated_image_url} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%", height: "100%" }}>
+                      <img src={item.generated_image_url} alt={item.prompt ?? "生成画像"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    </a>
+                  )}
+                </div>
                 <div style={{ padding: 12 }}>
                   <div style={{ color: "#6a6258", fontSize: 11, marginBottom: 8 }}>
                     {new Date(item.created_at).toLocaleString("ja-JP", {
@@ -95,7 +109,8 @@ export default function AdminPage() {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div style={panelStyle}>生成履歴はまだありません。</div>

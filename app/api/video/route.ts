@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fal } from "@fal-ai/client";
+import { createClient } from "@supabase/supabase-js";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const FAL_KEY = process.env.FAL_API_KEY!;
 
@@ -7,6 +9,10 @@ const MODEL_IDS: Record<string, string> = {
   grok: "xai/grok-imagine-video/image-to-video",
   seedance: "bytedance/seedance-2.0/fast/image-to-video",
 };
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 async function uploadToFal(file: File): Promise<string> {
   fal.config({ credentials: FAL_KEY });
@@ -24,6 +30,61 @@ function getErrorMessage(error: unknown): string {
   }
 
   return String(error);
+}
+
+async function getAuthenticatedUser(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (token) {
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (user) return user;
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const { data: { user } } = await cookieSupabase.auth.getUser();
+  return user;
+}
+
+async function saveVideoHistory({
+  userId,
+  model,
+  prompt,
+  videoUrl,
+  creditsUsed,
+}: {
+  userId: string;
+  model: string;
+  prompt: string;
+  videoUrl: string;
+  creditsUsed: number;
+}) {
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const shopId = shop?.id ?? userId;
+
+  const { data: existing } = await supabase
+    .from("generation_history")
+    .select("id")
+    .eq("shop_id", shopId)
+    .eq("generated_image_url", videoUrl)
+    .maybeSingle();
+
+  if (existing) return;
+
+  const label = model === "seedance" ? "Seedance動画" : "Grok動画";
+  const { error } = await supabase.from("generation_history").insert({
+    shop_id: shopId,
+    avatar_id: null,
+    prompt: `${label}: ${prompt}`,
+    generated_image_url: videoUrl,
+    credits_used: creditsUsed,
+  });
+
+  if (error) {
+    console.error("video history insert failed", error.message);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -84,6 +145,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const requestId = searchParams.get("requestId");
   const model = searchParams.get("model") ?? "grok";
+  const prompt = searchParams.get("prompt") ?? "video generation";
+  const duration = Number(searchParams.get("duration") ?? 5);
+  const resolution = searchParams.get("resolution") ?? "720p";
 
   if (!requestId) {
     return NextResponse.json({ error: "requestId is required" }, { status: 400 });
@@ -111,6 +175,17 @@ export async function GET(req: NextRequest) {
       const videoUrl = resultData.video?.url;
       if (!videoUrl) {
         throw new Error("result video url is missing");
+      }
+      const user = await getAuthenticatedUser(req);
+      if (user) {
+        const creditsUsed = model === "seedance" ? Math.max(1, Math.round(duration * 2)) : Math.max(1, Math.round(duration * (resolution === "480p" ? 1 : 2)));
+        await saveVideoHistory({
+          userId: user.id,
+          model,
+          prompt,
+          videoUrl,
+          creditsUsed,
+        });
       }
       return NextResponse.json({ status: "completed", videoUrl });
     }

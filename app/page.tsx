@@ -46,6 +46,11 @@ const VIDEO_CREDITS_ESTIMATE = 8;
 const MAX_AVATARS = 200;
 const TOPUP_PACK_LIST = Object.entries(TOPUP_PACKS).map(([id, pack]) => ({ id: id as TopupPackId, ...pack }));
 
+function isVideoHistoryUrl(url: string) {
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  return cleanUrl.endsWith(".mp4") || cleanUrl.endsWith(".webm") || cleanUrl.endsWith(".mov");
+}
+
 export default function Home() {
   const [tab, setTab] = useState<TabId>("mosaic");
   const [mosaicSrc, setMosaicSrc] = useState<string | null>(null);
@@ -601,7 +606,14 @@ export default function Home() {
     if (!videoRequestId) return;
     const pollVideoStatus = async () => {
       try {
-        const res = await fetch(`/api/video?requestId=${videoRequestId}&model=${videoModel}`);
+        const params = new URLSearchParams({
+          requestId: videoRequestId,
+          model: videoModel,
+          prompt: videoPrompt,
+          duration: String(videoDuration),
+          resolution: videoResolution,
+        });
+        const res = await fetch(`/api/video?${params.toString()}`);
         const data = await res.json();
         if (!res.ok || data.error) {
           throw new Error(data.error ?? "動画生成の状態確認に失敗しました");
@@ -923,9 +935,9 @@ export default function Home() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <div>
                     <div style={sectionLabelStyle}>生成履歴</div>
-                    <div style={{ fontSize: 20, fontWeight: 500, color: "#171717", marginBottom: 6 }}>生成した画像</div>
+                    <div style={{ fontSize: 20, fontWeight: 500, color: "#171717", marginBottom: 6 }}>生成した画像・動画</div>
                     <div style={{ fontSize: 12, color: "#4e4a43", lineHeight: 1.7 }}>
-                      アカウントに紐づいた画像生成の結果を新しい順に最大50件まで表示します。
+                      アカウントに紐づいた画像・動画生成の結果を新しい順に最大50件まで表示します。
                     </div>
                   </div>
                   <button onClick={() => void loadHistory()} disabled={historyLoading} style={smallButtonStyle}>
@@ -958,20 +970,30 @@ export default function Home() {
                 </div>
               ) : historyItems.length > 0 ? (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 14 }}>
-                  {historyItems.map(item => (
+                  {historyItems.map(item => {
+                    const isVideo = isVideoHistoryUrl(item.generated_image_url);
+
+                    return (
                     <div key={item.id} style={{ ...panelStyle, padding: 0, overflow: "hidden" }}>
-                      <a
-                        href={item.generated_image_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ display: "block", aspectRatio: "3 / 4", background: "#111", overflow: "hidden" }}
-                      >
-                        <img
-                          src={item.generated_image_url}
-                          alt={item.prompt ?? "生成画像"}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                        />
-                      </a>
+                      <div style={{ display: "block", aspectRatio: "3 / 4", background: "#111", overflow: "hidden" }}>
+                        {isVideo ? (
+                          <video
+                            src={item.generated_image_url}
+                            controls
+                            muted
+                            playsInline
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          />
+                        ) : (
+                          <a href={item.generated_image_url} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%", height: "100%" }}>
+                            <img
+                              src={item.generated_image_url}
+                              alt={item.prompt ?? "生成画像"}
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            />
+                          </a>
+                        )}
+                      </div>
                       <div style={{ padding: 12 }}>
                         <div style={{ fontSize: 11, color: "#6a6258", marginBottom: 8 }}>
                           {new Date(item.created_at).toLocaleString("ja-JP", {
@@ -1010,7 +1032,8 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div style={panelStyle}>
