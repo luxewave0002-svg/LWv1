@@ -76,6 +76,51 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const { user, client } = await getAuthenticatedContext(req);
+    if (!user) {
+      return NextResponse.json({ error: "ログイン状態が切れています。もう一度ログインしてください。" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const ids = Array.isArray(body.ids)
+      ? body.ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+      : [];
+
+    if (ids.length === 0) {
+      return NextResponse.json({ error: "削除する履歴を選択してください。" }, { status: 400 });
+    }
+
+    const { data: shop, error: shopError } = await client
+      .from("shops")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (shopError) {
+      throw new Error(shopError.message);
+    }
+
+    const shopIds = Array.from(new Set([user.id, shop?.id].filter(Boolean)));
+    const { data, error } = await client
+      .from("generation_history")
+      .delete()
+      .in("id", ids)
+      .in("shop_id", shopIds)
+      .select("id");
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return NextResponse.json({ success: true, deletedIds: (data ?? []).map(item => item.id) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "履歴の削除に失敗しました";
+    console.error("history delete failed", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 function parseHistoryPrompt(prompt: string | null) {
   if (!prompt?.startsWith(HISTORY_PREFIX)) {
     return { prompt, url: "", kind: "image" };

@@ -103,6 +103,21 @@ function saveLocalHistory(email: string, item: Omit<GenerationHistoryItem, "id" 
   window.localStorage.setItem(key, JSON.stringify(next));
 }
 
+function deleteLocalHistory(email: string, ids: string[]) {
+  if (typeof window === "undefined" || ids.length === 0) return;
+
+  const selectedIds = new Set(ids);
+  getLocalHistoryKeys(email).forEach(key => {
+    try {
+      const current = JSON.parse(window.localStorage.getItem(key) ?? "[]") as GenerationHistoryItem[];
+      const next = current.filter(item => !selectedIds.has(item.id));
+      window.localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      // Ignore malformed local history and keep the rest of the deletion flow moving.
+    }
+  });
+}
+
 function mergeHistoryItems(remoteItems: GenerationHistoryItem[], localItems: GenerationHistoryItem[]) {
   const seen = new Set<string>();
   return [...remoteItems, ...localItems]
@@ -274,7 +289,9 @@ export default function Home() {
   const [topupStatus, setTopupStatus] = useState("");
   const [trialInviteCode, setTrialInviteCode] = useState("");
   const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>([]);
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyDeleting, setHistoryDeleting] = useState(false);
   const [historyStatus, setHistoryStatus] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -556,13 +573,58 @@ export default function Home() {
 
       const merged = mergeHistoryItems(data.history ?? [], localHistory);
       setHistoryItems(merged);
+      setSelectedHistoryIds([]);
     } catch (error) {
       setHistoryItems(localHistory);
+      setSelectedHistoryIds([]);
       setHistoryStatus(localHistory.length > 0 ? "" : error instanceof Error ? error.message : "履歴を取得できませんでした");
     } finally {
       setHistoryLoading(false);
     }
   }, [getAuthToken, userEmail]);
+
+  const toggleHistorySelection = useCallback((id: string) => {
+    setSelectedHistoryIds(current =>
+      current.includes(id) ? current.filter(selectedId => selectedId !== id) : [...current, id]
+    );
+  }, []);
+
+  const deleteSelectedHistory = useCallback(async () => {
+    if (selectedHistoryIds.length === 0 || historyDeleting) return;
+    if (!window.confirm(`選択した${selectedHistoryIds.length}件の履歴を削除します。よろしいですか？`)) return;
+
+    setHistoryDeleting(true);
+    setHistoryStatus("選択した履歴を削除中...");
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error("ログイン状態を確認できませんでした。");
+      }
+
+      const res = await fetch("/api/history", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids: selectedHistoryIds }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error ?? "履歴の削除に失敗しました");
+      }
+
+      deleteLocalHistory(userEmail, selectedHistoryIds);
+      const deletedIds = new Set<string>([...selectedHistoryIds, ...(data.deletedIds ?? [])]);
+      setHistoryItems(current => current.filter(item => !deletedIds.has(item.id)));
+      setSelectedHistoryIds([]);
+      setHistoryStatus(`${deletedIds.size}件の履歴を削除しました。`);
+    } catch (error) {
+      setHistoryStatus(error instanceof Error ? error.message : "履歴の削除に失敗しました");
+    } finally {
+      setHistoryDeleting(false);
+    }
+  }, [getAuthToken, historyDeleting, selectedHistoryIds, userEmail]);
 
   const loadCurrentUser = useCallback(async () => {
     const supabase = createClient();
@@ -1249,9 +1311,24 @@ export default function Home() {
                       アカウントに紐づいた画像・動画生成の結果を新しい順に最大50件まで表示します。
                     </div>
                   </div>
-                  <button onClick={() => void loadHistory()} disabled={historyLoading} style={smallButtonStyle}>
-                    {historyLoading ? "更新中..." : "更新"}
-                  </button>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button onClick={() => void loadHistory()} disabled={historyLoading || historyDeleting} style={smallButtonStyle}>
+                      {historyLoading ? "更新中..." : "更新"}
+                    </button>
+                    <button
+                      onClick={() => void deleteSelectedHistory()}
+                      disabled={selectedHistoryIds.length === 0 || historyDeleting}
+                      style={{
+                        ...smallButtonStyle,
+                        borderColor: selectedHistoryIds.length > 0 ? "#b84242" : "#a89e8e",
+                        color: selectedHistoryIds.length > 0 ? "#b84242" : "#5f5648",
+                        opacity: selectedHistoryIds.length === 0 || historyDeleting ? 0.5 : 1,
+                        cursor: selectedHistoryIds.length === 0 || historyDeleting ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {historyDeleting ? "削除中..." : selectedHistoryIds.length > 0 ? `${selectedHistoryIds.length}件削除` : "選択削除"}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1282,9 +1359,37 @@ export default function Home() {
                   {historyItems.map(item => {
                     const hasMedia = Boolean(item.generated_image_url);
                     const isVideo = item.media_type === "video" || isVideoHistoryUrl(item.generated_image_url);
+                    const selected = selectedHistoryIds.includes(item.id);
 
                     return (
-                    <div key={item.id} style={{ ...panelStyle, padding: 0, overflow: "hidden" }}>
+                    <div key={item.id} style={{ ...panelStyle, padding: 0, overflow: "hidden", borderColor: selected ? "#b84242" : "#a89e8e", position: "relative" }}>
+                      <label
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          left: 8,
+                          zIndex: 2,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 8px",
+                          borderRadius: 999,
+                          background: selected ? "rgba(184,66,66,0.92)" : "rgba(0,0,0,0.62)",
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          userSelect: "none",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleHistorySelection(item.id)}
+                          style={{ width: 13, height: 13, accentColor: "#b84242" }}
+                        />
+                        選択
+                      </label>
                       <div style={{ display: "block", aspectRatio: "3 / 4", background: "#111", overflow: "hidden" }}>
                         {!hasMedia ? (
                           <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: 12, padding: 16, textAlign: "center" }}>
