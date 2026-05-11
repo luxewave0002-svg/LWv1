@@ -86,7 +86,7 @@ export default function Home() {
 
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editSrc, setEditSrc] = useState<string | null>(null);
-  const [editPrompt, setEditPrompt] = useState("顔、表情、目鼻口、輪郭、髪型、肌色、体型は元画像のまま絶対に変更しない。人物の同一性を保ったまま、ロゴ、透かし、文字だけを削除し、背景とライティングを自然に整える");
+  const [editPrompt, setEditPrompt] = useState("");
   const [editResolution, setEditResolution] = useState<EditResolution>("1k");
   const [editLoading, setEditLoading] = useState(false);
   const [editResult, setEditResult] = useState<string | null>(null);
@@ -1923,7 +1923,7 @@ export default function Home() {
                 <div style={panelStyle}>
                   <div style={sectionLabelStyle}>モデル</div>
                   <div style={{ fontSize: 12, color: "#4e4a43", lineHeight: 1.7 }}>
-                    Grokの画像編集APIで、元画像を参照しながら背景、質感、明るさ、文字除去などを編集します。顔は保持する指定を強めています。
+                    
                   </div>
                 </div>
 
