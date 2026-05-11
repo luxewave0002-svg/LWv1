@@ -91,7 +91,12 @@ export async function POST(req: NextRequest) {
 
     const historyPrompt = `${HISTORY_PREFIX}${JSON.stringify({ prompt, url: generated_image_url, kind: media_type })}`;
 
-    const { error } = await client.from("generation_history").insert({
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error } = await adminClient.from("generation_history").insert({
       shop_id,
       prompt: historyPrompt,
       credits_used: credits_used || 1,
