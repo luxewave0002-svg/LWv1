@@ -65,14 +65,28 @@ async function imageUrlToFile(url: string, name: string) {
   return new File([blob], `${name || "cast"}.${extension}`, { type: blob.type || "image/jpeg" });
 }
 
-async function saveFileAs(url: string, defaultName: string) {
+function buildIncrementedFileName(sourceName: string | null | undefined, fallbackName: string) {
+  const rawName = (sourceName && sourceName.trim()) || fallbackName;
+  const lastDot = rawName.lastIndexOf(".");
+  const hasExt = lastDot > 0 && lastDot < rawName.length - 1;
+  const base = hasExt ? rawName.slice(0, lastDot) : rawName;
+  const ext = hasExt ? rawName.slice(lastDot) : (fallbackName.includes(".") ? fallbackName.slice(fallbackName.lastIndexOf(".")) : "");
+  const key = `lumiveil_download_counter:${rawName}`;
+  const current = Number(window.localStorage.getItem(key) || "0");
+  const next = current + 1;
+  window.localStorage.setItem(key, String(next));
+  return `${base}_${next}${ext}`;
+}
+
+async function saveFileAs(url: string, sourceName: string | null | undefined, fallbackName: string) {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error("ファイルを取得できませんでした");
   }
 
   const blob = await response.blob();
-  const ext = defaultName.includes(".") ? `.${defaultName.split(".").pop()}` : "";
+  const suggestedName = buildIncrementedFileName(sourceName, fallbackName);
+  const ext = suggestedName.includes(".") ? `.${suggestedName.split(".").pop()}` : "";
   const win = window as Window & {
     showSaveFilePicker?: (options?: {
       suggestedName?: string;
@@ -90,7 +104,7 @@ async function saveFileAs(url: string, defaultName: string) {
 
   if (win.showSaveFilePicker) {
     const handle = await win.showSaveFilePicker({
-      suggestedName: defaultName,
+      suggestedName,
       types: [
         {
           description: "Download file",
@@ -109,7 +123,7 @@ async function saveFileAs(url: string, defaultName: string) {
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = objectUrl;
-  a.download = defaultName;
+  a.download = suggestedName;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1959,7 +1973,7 @@ export default function Home() {
                     </div>
                     <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                       <button
-                        onClick={() => void saveFileAs(editResult, "grok-edit.jpg")}
+                        onClick={() => void saveFileAs(editResult, editFile?.name, "grok-edit.jpg")}
                         style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: 1 }}
                       >
                         ダウンロード
@@ -2130,7 +2144,7 @@ export default function Home() {
                     />
                     <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                       <button
-                        onClick={() => void saveFileAs(videoResult, "video.mp4")}
+                        onClick={() => void saveFileAs(videoResult, videoFile?.name, "video.mp4")}
                         style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: 1 }}
                       >
                         ダウンロード
@@ -2265,7 +2279,7 @@ export default function Home() {
             </div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
               <button
-                onClick={() => mosaicImage && void saveFileAs(mosaicImage, "mosaic.png")}
+                onClick={() => mosaicImage && void saveFileAs(mosaicImage, undefined, "mosaic.png")}
                 style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 120 }}
               >
                 保存
