@@ -65,6 +65,57 @@ async function imageUrlToFile(url: string, name: string) {
   return new File([blob], `${name || "cast"}.${extension}`, { type: blob.type || "image/jpeg" });
 }
 
+async function saveFileAs(url: string, defaultName: string) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("ファイルを取得できませんでした");
+  }
+
+  const blob = await response.blob();
+  const ext = defaultName.includes(".") ? `.${defaultName.split(".").pop()}` : "";
+  const win = window as Window & {
+    showSaveFilePicker?: (options?: {
+      suggestedName?: string;
+      types?: Array<{
+        description?: string;
+        accept: Record<string, string[]>;
+      }>;
+    }) => Promise<{
+      createWritable: () => Promise<{
+        write: (data: Blob) => Promise<void>;
+        close: () => Promise<void>;
+      }>;
+    }>;
+  };
+
+  if (win.showSaveFilePicker) {
+    const handle = await win.showSaveFilePicker({
+      suggestedName: defaultName,
+      types: [
+        {
+          description: "Download file",
+          accept: {
+            [blob.type || "application/octet-stream"]: ext ? [ext] : [".bin"],
+          },
+        },
+      ],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = defaultName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export default function Home() {
   const [tab, setTab] = useState<TabId>("mosaic");
   const [mosaicSrc, setMosaicSrc] = useState<string | null>(null);
@@ -1907,13 +1958,12 @@ export default function Home() {
                       <img src={editResult} alt="編集後" style={{ width: "100%", maxHeight: 460, objectFit: "contain", display: "block" }} />
                     </div>
                     <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                      <a
-                        href={editResult}
-                        download="grok-edit.jpg"
+                      <button
+                        onClick={() => void saveFileAs(editResult, "grok-edit.jpg")}
                         style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: 1 }}
                       >
                         ダウンロード
-                      </a>
+                      </button>
                       <button onClick={() => setEditResult(null)} style={{ ...smallButtonStyle, flex: 1 }}>
                         結果をクリア
                       </button>
@@ -2079,13 +2129,12 @@ export default function Home() {
                       style={{ width: "100%", borderRadius: 10, background: "#000" }}
                     />
                     <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                      <a
-                        href={videoResult}
-                        download="video.mp4"
+                      <button
+                        onClick={() => void saveFileAs(videoResult, "video.mp4")}
                         style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: 1 }}
                       >
                         ダウンロード
-                      </a>
+                      </button>
                       <button
                         onClick={() => { setVideoResult(null); setVideoStatus(""); }}
                         style={{ ...smallButtonStyle, flex: 1 }}
@@ -2215,13 +2264,12 @@ export default function Home() {
               <PreviewCard label="加工後" src={mosaicImage} />
             </div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
-              <a
-                href={mosaicImage}
-                download="mosaic.png"
+              <button
+                onClick={() => mosaicImage && void saveFileAs(mosaicImage, "mosaic.png")}
                 style={{ ...actionButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 120 }}
               >
                 保存
-              </a>
+              </button>
               <button onClick={() => setMosaicImage(null)} style={{ ...smallButtonStyle, minWidth: 120 }}>
                 閉じる
               </button>
