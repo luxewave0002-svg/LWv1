@@ -17,6 +17,13 @@ function createBearerSupabaseClient(token: string) {
   );
 }
 
+function createAdminSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
 async function getAuthenticatedContext(req: NextRequest): Promise<{ user: User | null; client: SupabaseClient }> {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (token) {
@@ -28,6 +35,28 @@ async function getAuthenticatedContext(req: NextRequest): Promise<{ user: User |
   const cookieSupabase = await createServerSupabaseClient();
   const { data: { user } } = await cookieSupabase.auth.getUser();
   return { user, client: cookieSupabase };
+}
+
+function parseHistoryPrompt(prompt: string | null) {
+  if (!prompt?.startsWith(HISTORY_PREFIX)) {
+    return { prompt, url: "", kind: "image" as "image" | "video" };
+  }
+
+  try {
+    const parsed = JSON.parse(prompt.slice(HISTORY_PREFIX.length)) as {
+      prompt?: string;
+      url?: string;
+      kind?: string;
+    };
+
+    return {
+      prompt: parsed.prompt ?? null,
+      url: parsed.url ?? "",
+      kind: parsed.kind === "video" ? "video" as const : "image" as const,
+    };
+  } catch {
+    return { prompt, url: "", kind: "image" as const };
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -42,14 +71,16 @@ export async function GET(req: NextRequest) {
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
+
     if (shopError) {
       throw new Error(shopError.message);
     }
 
     const shopIds = Array.from(new Set([user.id, shop?.id].filter(Boolean)));
+
     const { data, error } = await client
       .from("generation_history")
-      .select("id, avatar_id, prompt, credits_used, created_at")
+      .select("id, avatar_id, prompt, image_urls, credits_used, created_at, settings")
       .in("shop_id", shopIds)
       .order("created_at", { ascending: false })
       .limit(USER_HISTORY_LIMIT);
@@ -58,13 +89,23 @@ export async function GET(req: NextRequest) {
       throw new Error(error.message);
     }
 
-    const history = (data ?? []).map(item => {
+    const history = (data ?? []).map((item: any) => {
       const parsed = parseHistoryPrompt(item.prompt);
+      const imageUrls = Array.isArray(item.image_urls) ? item.image_urls : [];
+      const generatedImageUrl = imageUrls[0] ?? parsed.url ?? "";
+      const mediaType =
+        item?.settings?.media_type === "video" || parsed.kind === "video"
+          ? "video"
+          : "image";
+
       return {
-        ...item,
+        id: item.id,
+        avatar_id: item.avatar_id,
         prompt: parsed.prompt,
-        generated_image_url: parsed.url,
-        media_type: parsed.kind,
+        generated_image_url: generatedImageUrl,
+        media_type: mediaType,
+        credits_used: item.credits_used,
+        created_at: item.created_at,
       };
     });
 
@@ -84,30 +125,62 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prompt, generated_image_url, media_type, credits_used } = body;
+    const {
+      prompt,
+      generated_image_url,
+      media_type,
+      credits_used,
+      avatar_id,
+    } = body ?? {};
 
-    const { data: shop } = await client.from("shops").select("id").eq("user_id", user.id).maybeSingle();
+    const { data: shop, error: shopError } = await client
+      .from("shops")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (shopError) {
+      throw new Error(shopError.message);
+    }
+
     const shop_id = shop?.id || user.id;
 
-    const historyPrompt = `${HISTORY_PREFIX}${JSON.stringify({ prompt, url: generated_image_url, kind: media_type })}`;
+    const cleanPrompt = typeof prompt === "string" ? prompt : "";
+    const cleanUrl = typeof generated_image_url === "string" ? generated_image_url : "";
+    const cleanMediaType = media_type === "video" ? "video" : "image";
+    const cleanCreditsUsed = typeof credits_used === "number" ? credits_used : 1;
+    const cleanAvatarId = typeof avatar_id === "string" && avatar_id.length > 0 ? avatar_id : null;
 
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    if (!cleanUrl) {
+      throw new Error("generated_image_url がありません");
+    }
+
+    const historyPrompt = `${HISTORY_PREFIX}${JSON.stringify({
+      prompt: cleanPrompt,
+      url: cleanUrl,
+      kind: cleanMediaType,
+    })}`;
+
+    const adminClient = createAdminSupabaseClient();
 
     const { error } = await adminClient.from("generation_history").insert({
       shop_id,
+      avatar_id: cleanAvatarId,
       prompt: historyPrompt,
-      image_urls: generated_image_url ? [generated_image_url] : [],
-      credits_used: credits_used || 1,
+      image_urls: [cleanUrl],
+      settings: { media_type: cleanMediaType },
+      credits_used: cleanCreditsUsed,
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("history save failed", error);
-    return NextResponse.json({ error: "履歴の保存に失敗しました" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "履歴の保存に失敗しました";
+    console.error("history save failed", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -132,11 +205,13 @@ export async function DELETE(req: NextRequest) {
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
+
     if (shopError) {
       throw new Error(shopError.message);
     }
 
     const shopIds = Array.from(new Set([user.id, shop?.id].filter(Boolean)));
+
     const { data, error } = await client
       .from("generation_history")
       .delete()
@@ -148,31 +223,10 @@ export async function DELETE(req: NextRequest) {
       throw new Error(error.message);
     }
 
-    return NextResponse.json({ success: true, deletedIds: (data ?? []).map(item => item.id) });
+    return NextResponse.json({ success: true, deletedIds: (data ?? []).map((item: any) => item.id) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "履歴の削除に失敗しました";
     console.error("history delete failed", message);
     return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-function parseHistoryPrompt(prompt: string | null) {
-  if (!prompt?.startsWith(HISTORY_PREFIX)) {
-    return { prompt, url: "", kind: "image" };
-  }
-
-  try {
-    const parsed = JSON.parse(prompt.slice(HISTORY_PREFIX.length)) as {
-      prompt?: string;
-      url?: string;
-      kind?: string;
-    };
-    return {
-      prompt: parsed.prompt ?? null,
-      url: parsed.url ?? "",
-      kind: parsed.kind === "video" ? "video" : "image",
-    };
-  } catch {
-    return { prompt, url: "", kind: "image" };
   }
 }
