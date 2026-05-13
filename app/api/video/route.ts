@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (model === "seedance") {
-      input.duration = String(Math.min(15, Math.max(4, duration || 5)));
+      input.duration = Math.min(15, Math.max(4, duration || 5));
       input.aspect_ratio = "auto";
       input.generate_audio = true;
     } else {
