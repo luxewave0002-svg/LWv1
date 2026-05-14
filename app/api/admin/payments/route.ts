@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
 
-type PurchaseWithRelations = Prisma.PurchaseGetPayload<{
-  include: { user: { select: { name: true; email: true } }; plan: true }
-}>
+type PurchaseWithRelations = {
+  id: string
+  amountJpy: number
+  status: string
+  createdAt: Date
+  user: { name: string | null; email: string | null }
+  plan: { name: string }
+}
 
 export async function GET(request: NextRequest) {
   const session = await auth()
