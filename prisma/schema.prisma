@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// NextAuth required models
+// ─────────────────────────────────────────
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────
+// User（コアエンティティ）
+// ─────────────────────────────────────────
+model User {
+  id             String    @id @default(uuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime? @map("email_verified")
+  image          String?
+  password       String?
+  referralCode   String    @unique @default(cuid()) @map("referral_code")
+  referrerId     String?   @map("referrer_id")
+  referrer       User?     @relation("Referrals", fields: [referrerId], references: [id])
+  referrals      User[]    @relation("Referrals")
+  role           String    @default("user")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  accounts       Account[]
+  sessions       Session[]
+  partnerProfile PartnerProfile?
+  sentInvites    InviteLog[]     @relation("SentInvites")
+  receivedInvite InviteLog?      @relation("ReceivedInvite")
+  purchases      Purchase[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// パートナー情報
+// ─────────────────────────────────────────
+model PartnerProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique @map("user_id")
+  user        User      @relation(fields: [userId], references: [id])
+  displayName String    @map("display_name")
+  bio         String?
+  avatarUrl   String?   @map("avatar_url")
+  websiteUrl  String?   @map("website_url")
+  status      String    @default("pending")
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("partner_profiles")
+}
+
+// ─────────────────────────────────────────
+// 招待ログ
+// ─────────────────────────────────────────
+model InviteLog {
+  id         String    @id @default(uuid())
+  inviterId  String    @map("inviter_id")
+  inviter    User      @relation("SentInvites", fields: [inviterId], references: [id])
+  inviteeId  String?   @unique @map("invitee_id")
+  invitee    User?     @relation("ReceivedInvite", fields: [inviteeId], references: [id])
+  inviteCode String    @unique @map("invite_code")
+  invitedAt  DateTime  @default(now()) @map("invited_at")
+  joinedAt   DateTime? @map("joined_at")
+  ipAddress  String?   @map("ip_address")
+
+  @@map("invite_logs")
+}
+
+// ─────────────────────────────────────────
+// 商品・決済プラン
+// ─────────────────────────────────────────
+model Plan {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  priceJpy    Int        @map("price_jpy")
+  billingType String     @map("billing_type")
+  isActive    Boolean    @default(true) @map("is_active")
+  purchases   Purchase[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("plans")
+}
+
+// ─────────────────────────────────────────
+// 購入・決済記録（UnivaPay）
+// ─────────────────────────────────────────
+model Purchase {
+  id                 String    @id @default(uuid())
+  userId             String    @map("user_id")
+  user               User      @relation(fields: [userId], references: [id])
+  planId             String    @map("plan_id")
+  plan               Plan      @relation(fields: [planId], references: [id])
+  univaTransactionId String?   @unique @map("univa_transaction_id")
+  univaTokenId       String?   @map("univa_token_id")
+  amountJpy          Int       @map("amount_jpy")
+  status             String    @default("pending")
+  paidAt             DateTime? @map("paid_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@map("purchases")
+}
