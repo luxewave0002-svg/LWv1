@@ -1,6 +1,17 @@
 import { prisma } from '@/lib/prisma'
 
-async function getKpis() {
+type RecentUser = { id: string; name: string | null; email: string | null; createdAt: Date }
+type RecentPurchase = { id: string; amountJpy: number; paidAt: Date | null; user: { name: string | null }; plan: { name: string } }
+
+async function getKpis(): Promise<{
+  totalUsers: number
+  newUsersThisMonth: number
+  totalRevenue: number
+  monthlyRevenue: number
+  pendingPartners: number
+  recentUsers: RecentUser[]
+  recentPurchases: RecentPurchase[]
+}> {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
