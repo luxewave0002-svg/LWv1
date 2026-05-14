@@ -24,8 +24,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         })
         if (!user || !user.password) return null
 
-        // 本番では bcrypt を使う
-        const isValid = user.password === credentials.password
+        const bcrypt = await import('bcryptjs')
+        const isValid = await bcrypt.compare(credentials.password as string, user.password)
         if (!isValid) return null
 
         return { id: user.id, name: user.name, email: user.email, role: user.role }
