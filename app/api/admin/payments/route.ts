@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
+
+type PurchaseWithRelations = Prisma.PurchaseGetPayload<{
+  include: { user: { select: { name: true; email: true } }; plan: true }
+}>
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -21,7 +26,7 @@ export async function GET(request: NextRequest) {
   if (request.nextUrl.searchParams.get('format') === 'csv') {
     const rows = [
       ['ID', 'ユーザー', 'メール', 'プラン', '金額', 'ステータス', '日時'],
-      ...purchases.map((p) => [
+      ...purchases.map((p: PurchaseWithRelations) => [
         p.id,
         p.user.name ?? '',
         p.user.email ?? '',
