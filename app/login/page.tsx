@@ -39,22 +39,26 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, inviteCode: inviteCode || undefined }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? '登録に失敗しました')
-      setLoading(false)
-      return
-    }
-    const login = await signIn('credentials', { email, password, redirect: false })
-    if (login?.error) {
-      setError('登録しましたがログインに失敗しました。ログインタブからお試しください。')
-    } else {
-      router.push('/partner')
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, inviteCode: inviteCode || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? '登録に失敗しました')
+        setLoading(false)
+        return
+      }
+      const login = await signIn('credentials', { email, password, redirect: false })
+      if (login?.error) {
+        setError('登録しましたがログインに失敗しました。ログインタブからお試しください。')
+      } else {
+        router.push('/partner')
+      }
+    } catch {
+      setError('サーバーに接続できませんでした。しばらく待ってから再試行してください。')
     }
     setLoading(false)
   }
