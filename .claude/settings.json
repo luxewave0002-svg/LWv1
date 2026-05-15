@@ -23,7 +23,9 @@
       "mcp__claude_ai_Supabase__create_project",
       "mcp__claude_ai_Supabase__apply_migration",
       "mcp__claude_ai_Supabase__execute_sql",
-      "mcp__claude_ai_Vercel__get_deployment"
+      "mcp__claude_ai_Vercel__get_deployment",
+      "Bash(git rebase *)",
+      "Bash(DIRECT_URL=\"postgresql://postgres.zihodrbmnxdjtppntrnz:7G7*-KhafsfyYi-@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres\" DATABASE_URL=\"postgresql://postgres.zihodrbmnxdjtppntrnz:7G7*-KhafsfyYi-@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true\" npm run db:push)"
     ]
   }
 }
