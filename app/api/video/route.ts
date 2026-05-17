@@ -10,8 +10,8 @@ const MODEL_IDS: Record<string, string> = {
   "grok-imagine": "xai/grok-imagine-video/image-to-video",
   grok: "xai/grok-imagine-video/image-to-video",
   seedance: "bytedance/seedance-2.0/fast/image-to-video",
-  "wan-i2v-flash": "fal-ai/wan/v2.6/image-to-video/flash",
-  "wan-reference-to-video": "fal-ai/wan/v2.6/reference-to-video",
+  "wan-i2v-flash": "wan/v2.6/image-to-video/flash",
+  "wan-reference-to-video": "wan/v2.6/reference-to-video",
 };
 
 const MODEL_LABELS: Record<string, string> = {
