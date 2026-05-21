@@ -84,7 +84,7 @@ export default async function AdminDashboard() {
           href="/admin/partners"
           className="block bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4 text-yellow-400 hover:bg-yellow-900/50 transition-colors"
         >
-          ⚠️ パートナー承認待ちが <strong>{kpis.pendingPartners}件</strong> あります →
+          パートナー承認待ちが <strong>{kpis.pendingPartners}件</strong> あります →
         </a>
       )}
 

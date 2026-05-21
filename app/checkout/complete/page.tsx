@@ -11,7 +11,11 @@ function CompleteView() {
   return (
     <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center text-white">
       <div className="max-w-md text-center space-y-6 bg-[#1a1a2e] rounded-2xl p-10 border border-white/10">
-        <div className="text-6xl">✅</div>
+        <div className="w-16 h-16 rounded-full bg-emerald-900/50 border border-emerald-700 flex items-center justify-center mx-auto">
+          <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
         <h1 className="text-2xl font-bold text-emerald-400">購入が完了しました</h1>
         <p className="text-gray-400 text-sm">
           ご購入ありがとうございます。

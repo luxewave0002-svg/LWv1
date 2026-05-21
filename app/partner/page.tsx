@@ -440,7 +440,6 @@ export default function PartnerPage() {
         {mobileTab === 'invite' && <MobileInvite stats={stats} qrDataUrl={qrDataUrl} />}
         {mobileTab === 'tree' && (
           <div className="flex flex-col items-center justify-center gap-4 px-4 pt-12 pb-24">
-            <div className="text-6xl">🌳</div>
             <p className="text-gray-400 text-sm">招待ツリーを確認できます</p>
             <a href={`/tree?userId=${session?.user?.id}`}
               className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-colors">
