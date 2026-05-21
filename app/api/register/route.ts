@@ -15,9 +15,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'パスワードは8文字以上にしてください' }, { status: 400 })
   }
 
+  const hashed = await bcrypt.hash(password, 10)
+
   const existing = await prisma.user.findUnique({ where: { email } })
+
   if (existing) {
-    return NextResponse.json({ error: 'このメールアドレスは既に登録されています' }, { status: 409 })
+    // Account exists with a password → already registered
+    if (existing.password) {
+      return NextResponse.json({ error: 'このメールアドレスは既に登録されています' }, { status: 409 })
+    }
+    // Account exists without password (e.g. created via OAuth attempt) → set password
+    await prisma.user.update({
+      where: { email },
+      data: { name, password: hashed },
+    })
+    return NextResponse.json({ ok: true })
   }
 
   let referrerId: string | undefined
@@ -27,8 +39,6 @@ export async function POST(request: NextRequest) {
       referrerId = inviteLog.inviterId
     }
   }
-
-  const hashed = await bcrypt.hash(password, 10)
 
   const user = await prisma.user.create({
     data: {

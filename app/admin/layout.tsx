@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import { LogoutButton } from './logout-button'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -32,8 +33,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </a>
           ))}
         </nav>
-        <div className="px-5 text-xs text-gray-600">
-          {session.user.name ?? session.user.email}
+        <div className="px-5 mt-4 space-y-2 border-t border-white/10 pt-4">
+          <div className="text-xs text-gray-500 px-3 truncate">
+            {session.user.name ?? session.user.email}
+          </div>
+          <a
+            href="/partner"
+            className="block px-3 py-2 rounded-lg text-gray-500 hover:bg-white/10 hover:text-gray-300 transition-colors text-sm"
+          >
+            パートナー画面へ
+          </a>
+          <LogoutButton />
         </div>
       </aside>
 

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import QRCode from 'qrcode'
@@ -68,7 +68,27 @@ export default function PartnerPage() {
   return (
     <div className="min-h-screen bg-[#0f0f1a] text-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-violet-400">パートナーダッシュボード</h1>
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-violet-400">パートナーダッシュボード</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 text-sm">{session?.user?.name ?? session?.user?.email}</span>
+            {session?.user?.role === 'admin' && (
+              <a
+                href="/admin"
+                className="text-xs px-3 py-1.5 rounded-lg bg-red-900/40 text-red-400 border border-red-800 hover:bg-red-900/60 transition-colors"
+              >
+                管理者パネル
+              </a>
+            )}
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
+            >
+              ログアウト
+            </button>
+          </div>
+        </div>
 
         {/* 招待URL カード */}
         <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
