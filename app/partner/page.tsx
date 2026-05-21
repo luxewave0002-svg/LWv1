@@ -44,7 +44,8 @@ export default function PartnerPage() {
 
   useEffect(() => {
     if (stats?.referralCode) {
-      const url = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/?ref=${stats.referralCode}`
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const url = `${origin}/login?invite=${stats.referralCode}`
       QRCode.toDataURL(url, { width: 180, margin: 1 }).then(setQrDataUrl)
     }
   }, [stats])
@@ -57,7 +58,7 @@ export default function PartnerPage() {
     )
   }
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/?ref=${stats.referralCode}`
+  const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/login?invite=${stats.referralCode}`
 
   function copyUrl() {
     navigator.clipboard.writeText(inviteUrl)

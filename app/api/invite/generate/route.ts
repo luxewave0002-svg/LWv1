@@ -9,6 +9,6 @@ export async function POST() {
   }
 
   const code = await generateInviteCode(session.user.id)
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
-  return NextResponse.json({ code, url: `${baseUrl}/?ref=${code}` })
+  const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+  return NextResponse.json({ code, url: `${baseUrl}/login?invite=${code}` })
 }

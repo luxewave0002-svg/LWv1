@@ -3,11 +3,12 @@
 export const dynamic = 'force-dynamic'
 
 import { signIn } from 'next-auth/react'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,6 +18,16 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+
+  // URL params: ?invite=CODE or ?tab=register
+  useEffect(() => {
+    const code = searchParams.get('invite') ?? searchParams.get('ref') ?? ''
+    if (code) {
+      setInviteCode(code)
+      setTab('register')
+    }
+    if (searchParams.get('tab') === 'register') setTab('register')
+  }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -126,9 +137,15 @@ export default function LoginPage() {
                 className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">招待コード（任意）</label>
+              <label className="block text-sm text-gray-400 mb-1">
+                招待コード
+                {inviteCode && <span className="ml-2 text-xs text-violet-400">（自動入力済み）</span>}
+              </label>
               <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                placeholder="任意"
+                className={`w-full bg-[#0f0f1a] border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500 ${
+                  inviteCode ? 'border-violet-500/60' : 'border-white/20'
+                }`} />
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button type="submit" disabled={loading}
@@ -159,5 +176,13 @@ export default function LoginPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

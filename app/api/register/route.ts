@@ -33,10 +33,17 @@ export async function POST(request: NextRequest) {
   }
 
   let referrerId: string | undefined
+  let resolvedInviteCode: string | undefined
   if (inviteCode) {
+    // Try as one-time InviteLog code first
     const inviteLog = await prisma.inviteLog.findUnique({ where: { inviteCode } })
     if (inviteLog && !inviteLog.inviteeId) {
       referrerId = inviteLog.inviterId
+      resolvedInviteCode = inviteCode
+    } else {
+      // Fall back to permanent referralCode on User
+      const referrer = await prisma.user.findUnique({ where: { referralCode: inviteCode } })
+      if (referrer) referrerId = referrer.id
     }
   }
 
@@ -50,9 +57,9 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  if (inviteCode && referrerId) {
+  if (resolvedInviteCode && referrerId) {
     await prisma.inviteLog.update({
-      where: { inviteCode },
+      where: { inviteCode: resolvedInviteCode },
       data: { inviteeId: user.id, joinedAt: new Date() },
     })
   }
