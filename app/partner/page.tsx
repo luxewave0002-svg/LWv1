@@ -127,7 +127,7 @@ function MobileHome({ stats, session, qrDataUrl }: { stats: Stats; session: any;
               <div key={r.id} className="flex items-center justify-between">
                 <div>
                   <div className="text-white text-sm font-medium">{r.name ?? r.email}</div>
-                  <div className="text-gray-500 text-xs">{new Date(r.createdAt).toLocaleDateString('ja-JP')} 登録</div>
+                  <div className="text-gray-500 text-xs">{new Date(r.createdAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })} 登録</div>
                 </div>
                 <span className="bg-emerald-900/40 text-emerald-400 text-xs px-2 py-1 rounded-full border border-emerald-800">登録済</span>
               </div>
@@ -205,7 +205,7 @@ function MobileInvite({ stats, qrDataUrl }: { stats: Stats; qrDataUrl: string })
                 </div>
                 <div className="text-right">
                   <span className="bg-emerald-900/40 text-emerald-400 text-xs px-2.5 py-1 rounded-full border border-emerald-800">登録済</span>
-                  <div className="text-gray-600 text-xs mt-1">{new Date(r.createdAt).toLocaleDateString('ja-JP')}</div>
+                  <div className="text-gray-600 text-xs mt-1">{new Date(r.createdAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
               </div>
             ))}
@@ -361,7 +361,7 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
                     <tr key={r.id} className="border-b border-white/5 hover:bg-white/5">
                       <td className="py-3 pr-4 text-white font-medium">{r.name ?? <span className="text-gray-500">未設定</span>}</td>
                       <td className="py-3 pr-4 text-gray-400">{r.email}</td>
-                      <td className="py-3 text-gray-400">{new Date(r.createdAt).toLocaleDateString('ja-JP')}</td>
+                      <td className="py-3 text-gray-400">{new Date(r.createdAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                     </tr>
                   ))}
                 </tbody>
