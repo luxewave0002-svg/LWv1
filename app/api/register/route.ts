@@ -5,6 +5,11 @@ import { customAlphabet } from 'nanoid'
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8)
 
+// Master access code — valid even without a matching InviteLog/User
+const MASTER_CODES = new Set([
+  process.env.INVITE_MASTER_CODE ?? 'LWPTNR001',
+])
+
 export async function POST(request: NextRequest) {
   const { name, email, password, inviteCode } = await request.json()
 
@@ -14,36 +19,42 @@ export async function POST(request: NextRequest) {
   if (password.length < 8) {
     return NextResponse.json({ error: 'パスワードは8文字以上にしてください' }, { status: 400 })
   }
+  if (!inviteCode) {
+    return NextResponse.json({ error: '招待コードは必須です' }, { status: 400 })
+  }
 
   const hashed = await bcrypt.hash(password, 10)
 
   const existing = await prisma.user.findUnique({ where: { email } })
-
   if (existing) {
-    // Account exists with a password → already registered
     if (existing.password) {
       return NextResponse.json({ error: 'このメールアドレスは既に登録されています' }, { status: 409 })
     }
-    // Account exists without password (e.g. created via OAuth attempt) → set password
-    await prisma.user.update({
-      where: { email },
-      data: { name, password: hashed },
-    })
+    // Account without password (OAuth stub) → set password
+    await prisma.user.update({ where: { email }, data: { name, password: hashed } })
     return NextResponse.json({ ok: true })
   }
 
+  // Resolve invite code → referrerId
   let referrerId: string | undefined
   let resolvedInviteCode: string | undefined
-  if (inviteCode) {
-    // Try as one-time InviteLog code first
+
+  if (MASTER_CODES.has(inviteCode.trim().toUpperCase())) {
+    // Master code: no referrer, always valid
+  } else {
+    // Try one-time InviteLog code
     const inviteLog = await prisma.inviteLog.findUnique({ where: { inviteCode } })
     if (inviteLog && !inviteLog.inviteeId) {
       referrerId = inviteLog.inviterId
       resolvedInviteCode = inviteCode
     } else {
-      // Fall back to permanent referralCode on User
+      // Try permanent referralCode
       const referrer = await prisma.user.findUnique({ where: { referralCode: inviteCode } })
-      if (referrer) referrerId = referrer.id
+      if (referrer) {
+        referrerId = referrer.id
+      } else {
+        return NextResponse.json({ error: '招待コードが無効です' }, { status: 400 })
+      }
     }
   }
 
@@ -57,7 +68,7 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  if (resolvedInviteCode && referrerId) {
+  if (resolvedInviteCode) {
     await prisma.inviteLog.update({
       where: { inviteCode: resolvedInviteCode },
       data: { inviteeId: user.id, joinedAt: new Date() },

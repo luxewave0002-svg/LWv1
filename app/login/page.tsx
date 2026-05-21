@@ -138,14 +138,16 @@ function LoginForm() {
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">
-                招待コード
+                招待コード <span className="text-red-400">*</span>
                 {inviteCode && <span className="ml-2 text-xs text-violet-400">（自動入力済み）</span>}
               </label>
               <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="任意"
+                placeholder="招待コードを入力してください"
+                required
                 className={`w-full bg-[#0f0f1a] border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500 ${
                   inviteCode ? 'border-violet-500/60' : 'border-white/20'
                 }`} />
+              <p className="text-xs text-gray-500 mt-1">招待コードをお持ちでない方は登録できません</p>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button type="submit" disabled={loading}
