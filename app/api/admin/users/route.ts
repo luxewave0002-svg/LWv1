@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+async function requireAdmin() {
   const session = await auth()
-  if (session?.user?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (session?.user?.role !== 'admin') return null
+  return session
+}
+
+export async function GET() {
+  if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
@@ -17,22 +20,33 @@ export async function GET() {
       role: true,
       createdAt: true,
       referralCode: true,
-      _count: { select: { referrals: true } },
+      _count: { select: { referrals: true, purchases: true } },
     },
   })
   return NextResponse.json(users)
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await auth()
-  if (session?.user?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { userId, role } = await request.json()
-  const user = await prisma.user.update({
-    where: { id: userId },
-    data: { role },
-  })
+  if (!userId || !['admin', 'user'].includes(role)) {
+    return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
+  }
+  const user = await prisma.user.update({ where: { id: userId }, data: { role } })
   return NextResponse.json(user)
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await requireAdmin()
+  if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { userId } = await request.json()
+  if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+  if (userId === session.user.id) {
+    return NextResponse.json({ error: '自分自身は削除できません' }, { status: 400 })
+  }
+
+  await prisma.user.delete({ where: { id: userId } })
+  return NextResponse.json({ ok: true })
 }
