@@ -7,18 +7,17 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
-type InviteLog = {
+type Referral = {
   id: string
-  inviteCode: string
-  invitedAt: string
-  joinedAt: string | null
-  invitee: { name: string | null; email: string | null } | null
+  name: string | null
+  email: string | null
+  createdAt: string
 }
 
 type Stats = {
   directCount: number
   totalCount: number
-  inviteLogs: InviteLog[]
+  referrals: Referral[]
   referralCode: string
 }
 
@@ -120,21 +119,17 @@ function MobileHome({ stats, session, qrDataUrl }: { stats: Stats; session: any;
       </div>
 
       {/* Invite list preview */}
-      {stats.inviteLogs.length > 0 && (
+      {stats.referrals.length > 0 && (
         <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-          <h2 className="text-gray-300 font-semibold mb-3">最近の招待</h2>
-          <div className="space-y-2">
-            {stats.inviteLogs.slice(0, 3).map((log) => (
-              <div key={log.id} className="flex items-center justify-between">
+          <h2 className="text-gray-300 font-semibold mb-3">招待した人</h2>
+          <div className="space-y-3">
+            {stats.referrals.slice(0, 3).map((r) => (
+              <div key={r.id} className="flex items-center justify-between">
                 <div>
-                  <div className="text-white text-sm">{log.invitee?.name ?? '未登録'}</div>
-                  <div className="text-gray-500 text-xs font-mono">{log.inviteCode}</div>
+                  <div className="text-white text-sm font-medium">{r.name ?? r.email}</div>
+                  <div className="text-gray-500 text-xs">{new Date(r.createdAt).toLocaleDateString('ja-JP')} 登録</div>
                 </div>
-                {log.joinedAt ? (
-                  <span className="bg-emerald-900/40 text-emerald-400 text-xs px-2 py-1 rounded-full border border-emerald-800">登録済</span>
-                ) : (
-                  <span className="bg-yellow-900/40 text-yellow-400 text-xs px-2 py-1 rounded-full border border-yellow-800">未使用</span>
-                )}
+                <span className="bg-emerald-900/40 text-emerald-400 text-xs px-2 py-1 rounded-full border border-emerald-800">登録済</span>
               </div>
             ))}
           </div>
@@ -197,22 +192,21 @@ function MobileInvite({ stats, qrDataUrl }: { stats: Stats; qrDataUrl: string })
       </div>
 
       <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-        <h2 className="text-gray-300 font-semibold mb-3">招待した人一覧 <span className="text-gray-500 text-sm font-normal">({stats.inviteLogs.length}件)</span></h2>
-        {stats.inviteLogs.length === 0 ? (
+        <h2 className="text-gray-300 font-semibold mb-3">招待した人一覧 <span className="text-gray-500 text-sm font-normal">({stats.referrals.length}件)</span></h2>
+        {stats.referrals.length === 0 ? (
           <p className="text-gray-500 text-sm">まだ誰も招待していません</p>
         ) : (
           <div className="space-y-3">
-            {stats.inviteLogs.map((log) => (
-              <div key={log.id} className="flex items-center justify-between py-1">
+            {stats.referrals.map((r) => (
+              <div key={r.id} className="flex items-center justify-between py-1 border-b border-white/5 last:border-0">
                 <div>
-                  <div className="text-white text-sm">{log.invitee?.name ?? '未登録'}</div>
-                  <div className="text-gray-500 text-xs">{new Date(log.invitedAt).toLocaleDateString('ja-JP')} 発行</div>
+                  <div className="text-white text-sm font-medium">{r.name ?? <span className="text-gray-400">名前未設定</span>}</div>
+                  <div className="text-gray-500 text-xs">{r.email}</div>
                 </div>
-                {log.joinedAt ? (
+                <div className="text-right">
                   <span className="bg-emerald-900/40 text-emerald-400 text-xs px-2.5 py-1 rounded-full border border-emerald-800">登録済</span>
-                ) : (
-                  <span className="bg-yellow-900/40 text-yellow-400 text-xs px-2.5 py-1 rounded-full border border-yellow-800">未使用</span>
-                )}
+                  <div className="text-gray-600 text-xs mt-1">{new Date(r.createdAt).toLocaleDateString('ja-JP')}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -346,35 +340,28 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
         </a>
 
         <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
-          <h2 className="text-lg font-semibold text-gray-300 mb-4">招待した人一覧</h2>
-          {stats.inviteLogs.length === 0 ? (
+          <h2 className="text-lg font-semibold text-gray-300 mb-4">
+            招待した人一覧
+            <span className="ml-2 text-sm font-normal text-gray-500">{stats.referrals.length}名</span>
+          </h2>
+          {stats.referrals.length === 0 ? (
             <p className="text-gray-500 text-sm">まだ誰も招待していません</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-gray-400">
-                    <th className="text-left py-2 pr-4">名前</th>
-                    <th className="text-left py-2 pr-4">招待コード</th>
-                    <th className="text-left py-2 pr-4">招待日時</th>
-                    <th className="text-left py-2 pr-4">登録日時</th>
-                    <th className="text-left py-2">状態</th>
+                    <th className="text-left py-2 pr-4 font-medium">名前</th>
+                    <th className="text-left py-2 pr-4 font-medium">メールアドレス</th>
+                    <th className="text-left py-2 font-medium">登録日</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.inviteLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="py-2 pr-4 text-white">{log.invitee?.name ?? '未登録'}</td>
-                      <td className="py-2 pr-4 font-mono text-violet-400">{log.inviteCode}</td>
-                      <td className="py-2 pr-4 text-gray-400">{new Date(log.invitedAt).toLocaleDateString('ja-JP')}</td>
-                      <td className="py-2 pr-4 text-gray-400">{log.joinedAt ? new Date(log.joinedAt).toLocaleDateString('ja-JP') : '—'}</td>
-                      <td className="py-2">
-                        {log.joinedAt ? (
-                          <span className="bg-emerald-900/50 text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-700">登録済</span>
-                        ) : (
-                          <span className="bg-yellow-900/50 text-yellow-400 text-xs px-2 py-0.5 rounded-full border border-yellow-700">未使用</span>
-                        )}
-                      </td>
+                  {stats.referrals.map((r) => (
+                    <tr key={r.id} className="border-b border-white/5 hover:bg-white/5">
+                      <td className="py-3 pr-4 text-white font-medium">{r.name ?? <span className="text-gray-500">未設定</span>}</td>
+                      <td className="py-3 pr-4 text-gray-400">{r.email}</td>
+                      <td className="py-3 text-gray-400">{new Date(r.createdAt).toLocaleDateString('ja-JP')}</td>
                     </tr>
                   ))}
                 </tbody>

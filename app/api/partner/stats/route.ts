@@ -10,32 +10,32 @@ export async function GET() {
 
   const userId = session.user.id
 
-  const [user, directReferrals, inviteLogs] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { referralCode: true } }),
-    prisma.user.count({ where: { referrerId: userId } }),
-    prisma.inviteLog.findMany({
-      where: { inviterId: userId },
-      include: { invitee: { select: { name: true, email: true } } },
-      orderBy: { invitedAt: 'desc' },
-      take: 50,
+  const [user, referrals, totalCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { referralCode: true },
     }),
+    // 直接招待したユーザー（referrerId 経由）
+    prisma.user.findMany({
+      where: { referrerId: userId },
+      select: { id: true, name: true, email: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    // 全配下を再帰カウント
+    prisma.$queryRaw<{ count: bigint }[]>`
+      WITH RECURSIVE tree AS (
+        SELECT id FROM users WHERE referrer_id = ${userId}
+        UNION ALL
+        SELECT u.id FROM tree t JOIN users u ON u.referrer_id = t.id
+      )
+      SELECT COUNT(*) as count FROM tree
+    `,
   ])
-
-  // 全配下を再帰的にカウント（簡易版：直接のみ）
-  // 本格的にはgetTreeNodes()を使い全ノード数を返す
-  const totalCount = await prisma.$queryRaw<{ count: bigint }[]>`
-    WITH RECURSIVE tree AS (
-      SELECT id FROM users WHERE referrer_id = ${userId}
-      UNION ALL
-      SELECT u.id FROM tree t JOIN users u ON u.referrer_id = t.id
-    )
-    SELECT COUNT(*) as count FROM tree
-  `
 
   return NextResponse.json({
     referralCode: user?.referralCode ?? '',
-    directCount: directReferrals,
+    directCount: referrals.length,
     totalCount: Number(totalCount[0]?.count ?? 0),
-    inviteLogs,
+    referrals,
   })
 }
