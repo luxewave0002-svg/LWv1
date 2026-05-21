@@ -94,28 +94,12 @@ function MobileHome({ stats, session, qrDataUrl }: { stats: Stats; session: any;
         <div className="bg-[#0f0f1a] rounded-lg px-3 py-2 text-xs text-gray-400 font-mono break-all leading-relaxed">
           {inviteUrl}
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={copyUrl}
-            className="bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
-          >
-            {copied ? '✓ コピー' : 'コピー'}
-          </button>
-          <a
-            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(inviteUrl)}`}
-            target="_blank" rel="noopener noreferrer"
-            className="bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl text-sm font-semibold text-center transition-colors"
-          >
-            X
-          </a>
-          <a
-            href={`https://line.me/R/msg/text/?${encodeURIComponent(inviteUrl)}`}
-            target="_blank" rel="noopener noreferrer"
-            className="bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl text-sm font-semibold text-center transition-colors"
-          >
-            LINE
-          </a>
-        </div>
+        <button
+          onClick={copyUrl}
+          className="w-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
+        >
+          {copied ? '✓ コピー済み' : 'URLをコピー'}
+        </button>
       </div>
 
       {/* Invite list preview */}
@@ -154,11 +138,18 @@ function MobileInvite({ stats, qrDataUrl }: { stats: Stats; qrDataUrl: string })
       <h1 className="text-xl font-bold text-white">招待する</h1>
 
       {qrDataUrl && (
-        <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10 flex flex-col items-center gap-3">
+        <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10 flex flex-col items-center gap-4">
           <p className="text-gray-400 text-sm">QRコードをスキャン</p>
           <div className="bg-white p-3 rounded-2xl">
             <img src={qrDataUrl} alt="QRコード" width={200} height={200} />
           </div>
+          <a
+            href={qrDataUrl}
+            download="invite-qr.png"
+            className="w-full bg-[#0f0f1a] border border-white/20 hover:bg-white/10 text-gray-300 py-3 rounded-xl text-sm font-semibold text-center transition-colors"
+          >
+            QRコードをダウンロード
+          </a>
         </div>
       )}
 
@@ -173,22 +164,6 @@ function MobileInvite({ stats, qrDataUrl }: { stats: Stats; qrDataUrl: string })
         >
           {copied ? '✓ コピーしました' : 'URLをコピー'}
         </button>
-        <div className="grid grid-cols-2 gap-3">
-          <a
-            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(inviteUrl)}`}
-            target="_blank" rel="noopener noreferrer"
-            className="bg-sky-600 hover:bg-sky-700 text-white py-3.5 rounded-xl font-semibold text-center text-sm transition-colors"
-          >
-            Xでシェア
-          </a>
-          <a
-            href={`https://line.me/R/msg/text/?${encodeURIComponent(inviteUrl)}`}
-            target="_blank" rel="noopener noreferrer"
-            className="bg-green-600 hover:bg-green-700 text-white py-3.5 rounded-xl font-semibold text-center text-sm transition-colors"
-          >
-            LINEでシェア
-          </a>
-        </div>
       </div>
 
       <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
@@ -305,19 +280,20 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
                 <button onClick={copyUrl} className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                   {copied ? '✓ コピー済み' : 'URLをコピー'}
                 </button>
-                <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(inviteUrl)}`} target="_blank" rel="noopener noreferrer"
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  Xでシェア
-                </a>
-                <a href={`https://line.me/R/msg/text/?${encodeURIComponent(inviteUrl)}`} target="_blank" rel="noopener noreferrer"
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  LINEでシェア
-                </a>
               </div>
             </div>
             {qrDataUrl && (
-              <div className="flex-shrink-0 bg-white p-2 rounded-xl">
-                <img src={qrDataUrl} alt="QRコード" width={160} height={160} />
+              <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                <div className="bg-white p-2 rounded-xl">
+                  <img src={qrDataUrl} alt="QRコード" width={160} height={160} />
+                </div>
+                <a
+                  href={qrDataUrl}
+                  download="invite-qr.png"
+                  className="text-xs text-gray-400 hover:text-white border border-white/20 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors w-full text-center"
+                >
+                  ダウンロード
+                </a>
               </div>
             )}
           </div>
