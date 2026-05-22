@@ -8,7 +8,6 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   Node,
@@ -21,73 +20,65 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import dagre from '@dagrejs/dagre'
 
-// ─── Colors ───────────────────────────────────────────────
+// ─── Branch colors (root=0, then per L1 branch) ───────────
 
-const ROOT_COLOR = {
-  circle: 'linear-gradient(145deg, #4a90d9, #2563a8)',
-  glow: 'rgba(74,144,217,0.5)',
-  edge: '#4a90d9',
-  text: '#93c5fd',
-}
-
-const BRANCH_PALETTE = [
-  { circle: 'linear-gradient(145deg, #c9973c, #8b6620)', glow: 'rgba(201,151,60,0.5)', edge: '#c9973c', text: '#fcd34d' },
-  { circle: 'linear-gradient(145deg, #3a9a8c, #1f6b5e)', glow: 'rgba(58,154,140,0.5)', edge: '#3a9a8c', text: '#6ee7b7' },
-  { circle: 'linear-gradient(145deg, #8b5cf6, #5b21b6)', glow: 'rgba(139,92,246,0.5)', edge: '#8b5cf6', text: '#c4b5fd' },
-  { circle: 'linear-gradient(145deg, #ec4899, #9d174d)', glow: 'rgba(236,72,153,0.5)', edge: '#ec4899', text: '#f9a8d4' },
-  { circle: 'linear-gradient(145deg, #f97316, #c2410c)', glow: 'rgba(249,115,22,0.5)', edge: '#f97316', text: '#fed7aa' },
+const PALETTE = [
+  { bg: '#1e3a5f', border: '#3b82f6', avatar: '#2563eb', text: '#93c5fd', edge: '#3b82f6' }, // blue  – root
+  { bg: '#3b2010', border: '#f97316', avatar: '#ea580c', text: '#fdba74', edge: '#f97316' }, // orange
+  { bg: '#134e32', border: '#22c55e', avatar: '#16a34a', text: '#86efac', edge: '#22c55e' }, // green
+  { bg: '#2e1065', border: '#a855f7', avatar: '#7c3aed', text: '#d8b4fe', edge: '#a855f7' }, // purple
+  { bg: '#4a1942', border: '#ec4899', avatar: '#db2777', text: '#f9a8d4', edge: '#ec4899' }, // pink
+  { bg: '#422006', border: '#eab308', avatar: '#ca8a04', text: '#fde047', edge: '#eab308' }, // yellow
 ]
 
-function getBranchColor(branchIndex: number) {
-  if (branchIndex === 0) return ROOT_COLOR
-  return BRANCH_PALETTE[(branchIndex - 1) % BRANCH_PALETTE.length]
+function pal(branchIdx: number) {
+  return PALETTE[branchIdx % PALETTE.length]
 }
 
 function buildBranchMap(nodes: Node[], edges: Edge[]): Map<string, number> {
   const map = new Map<string, number>()
-  const parentMap = new Map<string, string>()
-  edges.forEach((e) => parentMap.set(e.target, e.source))
+  const parentOf = new Map<string, string>()
+  edges.forEach((e) => parentOf.set(e.target, e.source))
 
   const root = nodes.find((n) => n.data.depth === 0)
   if (!root) return map
   map.set(root.id, 0)
 
-  const l1 = nodes.filter((n) => parentMap.get(n.id) === root.id)
+  const l1 = nodes.filter((n) => parentOf.get(n.id) === root.id)
   l1.forEach((n, i) => map.set(n.id, i + 1))
 
-  const queue = [...l1]
-  while (queue.length > 0) {
-    const node = queue.shift()!
-    const branchIdx = map.get(node.id)!
-    const children = edges
+  const q = [...l1]
+  while (q.length) {
+    const node = q.shift()!
+    const bi = map.get(node.id)!
+    edges
       .filter((e) => e.source === node.id)
-      .map((e) => nodes.find((n) => n.id === e.target))
-      .filter(Boolean) as Node[]
-    children.forEach((child) => {
-      map.set(child.id, branchIdx)
-      queue.push(child)
-    })
+      .forEach((e) => {
+        const child = nodes.find((n) => n.id === e.target)
+        if (child && !map.has(child.id)) {
+          map.set(child.id, bi)
+          q.push(child)
+        }
+      })
   }
-
   return map
 }
 
 // ─── Layout ───────────────────────────────────────────────
 
-const NODE_W = 110
-const NODE_H = 145
-const CIRCLE = 88
+const NW = 200
+const NH = 56
 
 function applyLayout(nodes: Node[], edges: Edge[]): Node[] {
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'TB', ranksep: 60, nodesep: 36, marginx: 60, marginy: 60 })
-  nodes.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }))
+  g.setGraph({ rankdir: 'TB', ranksep: 56, nodesep: 20, marginx: 60, marginy: 60 })
+  nodes.forEach((n) => g.setNode(n.id, { width: NW, height: NH }))
   edges.forEach((e) => g.setEdge(e.source, e.target))
   dagre.layout(g)
   return nodes.map((n) => {
     const p = g.node(n.id)
-    return { ...n, position: { x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 } }
+    return { ...n, position: { x: p.x - NW / 2, y: p.y - NH / 2 } }
   })
 }
 
@@ -103,154 +94,139 @@ type NodeData = {
   branchIndex: number
 }
 
-// ─── Person Icon ──────────────────────────────────────────
+// ─── Card Node ────────────────────────────────────────────
 
-function PersonIcon({ size = 36 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="white" style={{ opacity: 0.92 }}>
-      <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v2h20v-2c0-3.33-6.67-5-10-5z" />
-    </svg>
-  )
-}
-
-// ─── Custom Node ──────────────────────────────────────────
-
-function CustomNode({ data, selected }: { data: NodeData; selected: boolean }) {
-  const c = getBranchColor(data.branchIndex)
+function CardNode({ data, selected }: { data: NodeData; selected: boolean }) {
+  const c = pal(data.branchIndex)
+  const initials = data.label.trim().slice(0, 2).toUpperCase()
 
   return (
-    <div
-      className="flex flex-col items-center"
-      style={{ width: NODE_W, height: NODE_H, position: 'relative' }}
-    >
-      {/* Target handle — top of circle */}
+    <>
       <Handle
         type="target"
         position={Position.Top}
-        style={{
-          background: c.edge,
-          border: 'none',
-          width: 6,
-          height: 6,
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-        }}
+        style={{ background: c.border, border: 'none', width: 8, height: 8 }}
       />
 
-      {/* Circle avatar */}
       <div
         style={{
-          width: CIRCLE,
-          height: CIRCLE,
-          background: c.circle,
+          width: NW,
+          height: NH,
+          background: c.bg,
+          borderColor: selected ? c.border : c.border + '70',
+          borderWidth: selected ? 2 : 1,
           boxShadow: selected
-            ? `0 0 0 4px rgba(255,255,255,0.55), 0 0 0 8px ${c.glow}, 0 10px 30px ${c.glow}`
-            : `0 6px 28px ${c.glow}, inset 0 1px 0 rgba(255,255,255,0.18)`,
-          border: '2px solid rgba(255,255,255,0.12)',
-          transition: 'box-shadow 0.2s',
-          cursor: 'pointer',
+            ? `0 0 0 3px ${c.border}40, 0 4px 20px rgba(0,0,0,0.6)`
+            : '0 2px 12px rgba(0,0,0,0.5)',
         }}
-        className="rounded-full flex items-center justify-center flex-shrink-0"
+        className="border rounded-2xl flex items-center gap-3 px-3 select-none cursor-pointer transition-all duration-150"
       >
-        <PersonIcon size={data.isRoot ? 42 : 36} />
+        {/* Avatar circle */}
+        <div
+          style={{ background: c.avatar, boxShadow: `0 0 10px ${c.border}60`, minWidth: 36, height: 36 }}
+          className="rounded-full flex items-center justify-center"
+        >
+          <span className="text-white text-xs font-bold tracking-wide">{initials}</span>
+        </div>
+
+        {/* Name + level */}
+        <div className="flex-1 min-w-0">
+          <div className="text-white font-semibold text-sm truncate leading-tight">{data.label}</div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {data.isRoot && (
+              <span
+                style={{ background: c.border + '30', color: c.text }}
+                className="text-[9px] font-bold px-1.5 py-px rounded-full uppercase tracking-wider"
+              >
+                YOU
+              </span>
+            )}
+            <span style={{ color: c.text }} className="text-[10px] font-medium">
+              L{data.depth}
+            </span>
+            {data.joinedAt && !data.isRoot && (
+              <span className="text-gray-500 text-[10px]">
+                {new Date(data.joinedAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Direct invite count badge */}
+        {data.directCount > 0 && (
+          <div
+            style={{ background: c.border + '25', color: c.text, borderColor: c.border + '50' }}
+            className="border rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0 text-[11px] font-bold"
+          >
+            {data.directCount}
+          </div>
+        )}
       </div>
 
-      {/* Source handle — bottom of circle */}
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{
-          background: c.edge,
-          border: 'none',
-          width: 6,
-          height: 6,
-          bottom: 'auto',
-          top: CIRCLE - 3,
-          left: '50%',
-          transform: 'translateX(-50%)',
-        }}
+        style={{ background: c.border, border: 'none', width: 8, height: 8 }}
       />
-
-      {/* Label below circle */}
-      <div className="mt-2 text-center px-1" style={{ width: NODE_W }}>
-        {data.isRoot && (
-          <div
-            style={{ color: c.text, fontSize: 9 }}
-            className="font-bold uppercase tracking-widest mb-0.5"
-          >
-            YOU
-          </div>
-        )}
-        <div
-          className="font-semibold text-white leading-snug"
-          style={{ fontSize: 12, wordBreak: 'break-word' }}
-        >
-          {data.label}
-        </div>
-        {data.joinedAt && !data.isRoot && (
-          <div style={{ color: c.text, fontSize: 9 }} className="mt-0.5 opacity-60">
-            {new Date(data.joinedAt).toLocaleDateString('ja-JP', {
-              month: 'numeric',
-              day: 'numeric',
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    </>
   )
 }
 
-const nodeTypes = { custom: CustomNode }
+const nodeTypes = { card: CardNode }
 
 // ─── Detail Panel ─────────────────────────────────────────
 
 function DetailPanel({ node, onClose }: { node: Node; onClose: () => void }) {
   const data = node.data as NodeData
-  const c = getBranchColor(data.branchIndex)
+  const c = pal(data.branchIndex)
 
   return (
     <div
-      className="absolute right-4 top-4 z-10 w-60 rounded-2xl border overflow-hidden"
+      className="absolute right-4 top-4 z-10 w-64 rounded-2xl border overflow-hidden"
       style={{
-        background: 'rgba(10,10,20,0.97)',
-        borderColor: c.edge + '50',
-        boxShadow: `0 0 40px ${c.glow}, 0 10px 40px rgba(0,0,0,0.7)`,
+        background: 'rgba(10,12,24,0.97)',
+        borderColor: c.border + '60',
+        boxShadow: `0 0 40px ${c.border}20, 0 10px 40px rgba(0,0,0,0.7)`,
         backdropFilter: 'blur(24px)',
       }}
     >
       <div
         className="flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: c.edge + '25', background: c.glow + '18' }}
+        style={{ borderColor: c.border + '30', background: c.bg }}
       >
         <div className="flex items-center gap-2.5">
           <div
-            style={{ background: c.circle, boxShadow: `0 0 10px ${c.glow}` }}
-            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: c.avatar }}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
           >
-            <PersonIcon size={18} />
+            <span className="text-white text-xs font-bold">{data.label.slice(0, 2).toUpperCase()}</span>
           </div>
           <span className="text-white font-semibold text-sm truncate">{data.label}</span>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-600 hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-white/10"
+          className="text-gray-500 hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-white/10"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
+
       <div className="px-4 py-4 space-y-3">
         {([
           ['レベル', `L${data.depth}`],
           ['招待コード', data.referralCode],
-          ...(data.joinedAt ? [['登録日', new Date(data.joinedAt).toLocaleDateString('ja-JP')]] : []),
+          ...(data.joinedAt
+            ? [['登録日', new Date(data.joinedAt).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })]]
+            : []),
           ...(data.directCount > 0 ? [['直接招待', `${data.directCount}名`]] : []),
         ] as [string, string][]).map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between">
-            <span className="text-gray-500 text-xs">{label}</span>
-            <span style={{ color: c.text }} className="text-xs font-medium">{value}</span>
+          <div key={label} className="flex items-center justify-between gap-4">
+            <span className="text-gray-500 text-xs shrink-0">{label}</span>
+            <span style={{ color: c.text }} className="text-xs font-medium text-right break-all">
+              {value}
+            </span>
           </div>
         ))}
       </div>
@@ -266,29 +242,25 @@ function StatsBadge({ nodes, total }: { nodes: Node[]; total: number }) {
 
   return (
     <div
-      className="absolute left-4 top-4 z-10 rounded-2xl border px-4 py-3"
+      className="absolute left-4 top-4 z-10 rounded-2xl border px-4 py-3 space-y-2.5"
       style={{
-        background: 'rgba(10,10,20,0.95)',
-        borderColor: 'rgba(255,255,255,0.07)',
+        background: 'rgba(10,12,24,0.95)',
+        borderColor: 'rgba(255,255,255,0.08)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         backdropFilter: 'blur(20px)',
       }}
     >
-      <div className="text-gray-600 text-[9px] font-bold uppercase tracking-widest mb-2.5">
-        Network
-      </div>
-      <div className="space-y-2">
-        {([
-          ['総メンバー', total, 'text-white'],
-          ['直接招待', directCount, 'text-emerald-400'],
-          ['最大深度', `L${maxDepth}`, 'text-violet-400'],
-        ] as [string, string | number, string][]).map(([label, value, color]) => (
-          <div key={label} className="flex items-center justify-between gap-8">
-            <span className="text-gray-500 text-[11px]">{label}</span>
-            <span className={`font-bold text-sm ${color}`}>{value}</span>
-          </div>
-        ))}
-      </div>
+      <div className="text-gray-600 text-[9px] font-bold uppercase tracking-widest">Network</div>
+      {([
+        ['総メンバー', total, '#f8fafc'],
+        ['直接招待', directCount, '#4ade80'],
+        ['最大深度', `L${maxDepth}`, '#c084fc'],
+      ] as [string, string | number, string][]).map(([label, value, color]) => (
+        <div key={label} className="flex items-center justify-between gap-8">
+          <span className="text-gray-500 text-[11px]">{label}</span>
+          <span className="font-bold text-sm" style={{ color }}>{value}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -298,50 +270,47 @@ function StatsBadge({ nodes, total }: { nodes: Node[]; total: number }) {
 function ListView({ nodes }: { nodes: Node[] }) {
   const byDepth = nodes.reduce<Record<number, NodeData[]>>((acc, n) => {
     const d = (n.data as NodeData).depth
-    if (!acc[d]) acc[d] = []
-    acc[d].push(n.data as NodeData)
+    ;(acc[d] ??= []).push(n.data as NodeData)
     return acc
   }, {})
 
   return (
     <div className="space-y-3 px-4 pb-8">
       {Object.entries(byDepth).map(([depth, members]) => {
-        const c = getBranchColor(Number(depth))
+        const c = pal(Number(depth))
         return (
           <div
             key={depth}
             className="rounded-2xl border overflow-hidden"
-            style={{ background: 'rgba(10,10,20,0.8)', borderColor: c.edge + '30' }}
+            style={{ background: c.bg, borderColor: c.border + '40' }}
           >
             <div
               className="px-4 py-2.5 flex items-center gap-2 border-b"
-              style={{ borderColor: c.edge + '20', background: c.glow + '15' }}
+              style={{ borderColor: c.border + '30' }}
             >
               <span
-                style={{ background: c.circle, color: 'white', boxShadow: `0 0 8px ${c.glow}` }}
+                style={{ background: c.avatar, color: 'white' }}
                 className="text-xs font-bold px-2.5 py-0.5 rounded-full"
               >
                 L{depth}
               </span>
               <span className="text-white text-sm font-medium">{members.length}名</span>
             </div>
-            <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
               {members.map((m) => (
                 <div key={m.referralCode} className="px-4 py-3 flex items-center gap-3">
                   <div
-                    style={{ background: c.circle, boxShadow: `0 0 8px ${c.glow}` }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: c.avatar }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                   >
-                    <PersonIcon size={18} />
+                    <span className="text-white text-[10px] font-bold">{m.label.slice(0, 2).toUpperCase()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{m.label}</div>
-                    <div style={{ color: c.text }} className="font-mono text-[10px] mt-0.5">
-                      {m.referralCode}
-                    </div>
+                    <div style={{ color: c.text }} className="font-mono text-[10px] mt-0.5">{m.referralCode}</div>
                   </div>
                   {m.joinedAt && (
-                    <div className="text-gray-600 text-[10px] flex-shrink-0">
+                    <div className="text-gray-500 text-[10px] shrink-0">
                       {new Date(m.joinedAt).toLocaleDateString('ja-JP')}
                     </div>
                   )}
@@ -359,20 +328,13 @@ function ListView({ nodes }: { nodes: Node[] }) {
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#08080f' }}>
-      <div className="text-center space-y-5">
-        <div className="relative w-16 h-16 mx-auto">
-          <div
-            className="absolute inset-0 rounded-full border-2 border-blue-500/20 animate-ping"
-            style={{ animationDuration: '1.5s' }}
-          />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080c18' }}>
+      <div className="text-center space-y-4">
+        <div className="relative w-14 h-14 mx-auto">
+          <div className="absolute inset-0 rounded-full border-2 border-blue-500/20 animate-ping" style={{ animationDuration: '1.5s' }} />
           <div className="absolute inset-2 rounded-full border border-blue-500/40 animate-pulse" />
-          <div
-            className="absolute inset-4 rounded-full"
-            style={{ background: ROOT_COLOR.circle }}
-          />
         </div>
-        <div className="text-gray-500 text-xs tracking-widest uppercase">Loading network...</div>
+        <div className="text-gray-500 text-xs tracking-widest uppercase">Loading...</div>
       </div>
     </div>
   )
@@ -405,72 +367,61 @@ function TreeView() {
     fetch(`/api/invite/tree?userId=${userId}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.nodes && data.edges) {
-          const rawNodes = data.nodes as Node[]
-          const rawEdges = data.edges as Edge[]
-          const branchMap = buildBranchMap(rawNodes, rawEdges)
+        if (!data.nodes || !data.edges) return
+        const rawNodes = data.nodes as Node[]
+        const rawEdges = data.edges as Edge[]
+        const branchMap = buildBranchMap(rawNodes, rawEdges)
 
-          const enriched = rawNodes.map((n) => ({
-            ...n,
-            type: 'custom',
-            data: {
-              ...n.data,
-              isRoot: n.data.depth === 0,
-              directCount: rawEdges.filter((e) => e.source === n.id).length,
-              branchIndex: branchMap.get(n.id) ?? 0,
-            },
-          }))
+        const enriched = rawNodes.map((n) => ({
+          ...n,
+          type: 'card',
+          data: {
+            ...n.data,
+            isRoot: n.data.depth === 0,
+            directCount: rawEdges.filter((e) => e.source === n.id).length,
+            branchIndex: branchMap.get(n.id) ?? 0,
+          },
+        }))
 
-          const styledEdges = rawEdges.map((e) => {
-            const branchIdx = branchMap.get(e.source) ?? 0
-            const c = getBranchColor(branchIdx)
-            return {
-              ...e,
-              type: 'smoothstep',
-              animated: false,
-              style: { stroke: c.edge + 'b0', strokeWidth: 2 },
-            }
-          })
+        const styledEdges = rawEdges.map((e) => {
+          const bi = branchMap.get(e.source) ?? 0
+          const c = pal(bi)
+          return {
+            ...e,
+            type: 'smoothstep',
+            animated: false,
+            style: { stroke: c.border + '90', strokeWidth: 2 },
+          }
+        })
 
-          const laid = applyLayout(enriched, styledEdges)
-          setNodes(laid)
-          setEdges(styledEdges)
-          setTotal(data.total)
-        }
+        const laid = applyLayout(enriched, styledEdges)
+        setNodes(laid)
+        setEdges(styledEdges)
+        setTotal(data.total)
       })
       .finally(() => setLoading(false))
   }, [session, targetUserId])
 
-  const onNodeClick = useCallback<NodeMouseHandler>((_evt, node) => {
+  const onNodeClick = useCallback<NodeMouseHandler>((_e, node) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node))
   }, [])
 
   if (loading) return <LoadingScreen />
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#08080f' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#080c18' }}>
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 md:px-6 py-3 border-b"
-        style={{
-          background: 'rgba(8,8,15,0.98)',
-          borderColor: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(20px)',
-        }}
+        style={{ background: 'rgba(8,12,24,0.98)', borderColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)' }}
       >
         <div className="flex items-center gap-3">
           <a
             href="/partner"
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
-            style={{ border: '1px solid rgba(255,255,255,0.06)' }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.07)' }}
           >
-            <svg
-              className="w-4 h-4 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </a>
@@ -482,10 +433,7 @@ function TreeView() {
 
         <div
           className="flex rounded-xl overflow-hidden border"
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            borderColor: 'rgba(255,255,255,0.07)',
-          }}
+          style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
         >
           {(['graph', 'list'] as const).map((mode) => (
             <button
@@ -506,13 +454,12 @@ function TreeView() {
         {nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-6">
             <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{
-                background: ROOT_COLOR.circle,
-                boxShadow: `0 0 50px ${ROOT_COLOR.glow}`,
-              }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{ background: PALETTE[0].bg, border: `1px solid ${PALETTE[0].border}50` }}
             >
-              <PersonIcon size={42} />
+              <svg className="w-8 h-8" style={{ color: PALETTE[0].text }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
             </div>
             <div className="space-y-1.5">
               <p className="text-gray-300 font-semibold">まだ招待したユーザーがいません</p>
@@ -520,11 +467,7 @@ function TreeView() {
             </div>
             <a
               href="/partner"
-              className="text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105"
-              style={{
-                background: ROOT_COLOR.circle,
-                boxShadow: `0 0 20px ${ROOT_COLOR.glow}`,
-              }}
+              className="text-white px-6 py-2.5 rounded-xl text-sm font-medium bg-violet-600 hover:bg-violet-500 transition-colors"
             >
               ダッシュボードへ
             </a>
@@ -546,29 +489,15 @@ function TreeView() {
               style={{ background: 'transparent' }}
               proOptions={{ hideAttribution: true }}
             >
-              <Background
-                variant={BackgroundVariant.Dots}
-                color="rgba(255,255,255,0.03)"
-                gap={32}
-                size={1}
-              />
+              <Background variant={BackgroundVariant.Dots} color="rgba(255,255,255,0.03)" gap={28} size={1} />
               <Controls
                 style={{
-                  background: 'rgba(10,10,20,0.92)',
+                  background: 'rgba(10,12,24,0.92)',
                   border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: 14,
                   backdropFilter: 'blur(12px)',
                 }}
                 showInteractive={false}
-              />
-              <MiniMap
-                nodeColor={(n) => getBranchColor((n.data as NodeData).branchIndex).edge}
-                maskColor="rgba(0,0,0,0.75)"
-                style={{
-                  background: 'rgba(10,10,20,0.92)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: 14,
-                }}
               />
             </ReactFlow>
             <StatsBadge nodes={nodes} total={total} />
