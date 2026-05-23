@@ -4,78 +4,27 @@ export const dynamic = 'force-dynamic'
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
-import ReactFlow, {
-  Background,
-  Controls,
-  useNodesState,
-  useEdgesState,
-  Node,
-  Edge,
-  Handle,
-  Position,
-  BackgroundVariant,
-  NodeMouseHandler,
-  ReactFlowInstance,
-} from 'reactflow'
-import 'reactflow/dist/style.css'
-import dagre from '@dagrejs/dagre'
+import { useEffect, useState, useRef, Suspense } from 'react'
 
 // ─── Colors ───────────────────────────────────────────────
 
 const COLORS = [
-  { dark: '#1a3a5c', mid: '#2563eb', light: '#93c5fd', edge: '#3b82f6' },
-  { dark: '#4a2008', mid: '#c2410c', light: '#fdba74', edge: '#f97316' },
-  { dark: '#14402a', mid: '#15803d', light: '#86efac', edge: '#22c55e' },
-  { dark: '#2e1065', mid: '#7c3aed', light: '#d8b4fe', edge: '#a855f7' },
-  { dark: '#4a0d26', mid: '#be185d', light: '#f9a8d4', edge: '#ec4899' },
-  { dark: '#422006', mid: '#b45309', light: '#fde68a', edge: '#eab308' },
+  { mid: '#2563eb', light: '#93c5fd', dark: '#1e3a5f', edge: '#3b82f6' }, // blue  root
+  { mid: '#c2410c', light: '#fdba74', dark: '#431407', edge: '#f97316' }, // orange
+  { mid: '#15803d', light: '#86efac', dark: '#14532d', edge: '#22c55e' }, // green
+  { mid: '#7c3aed', light: '#d8b4fe', dark: '#2e1065', edge: '#a855f7' }, // purple
+  { mid: '#be185d', light: '#f9a8d4', dark: '#500724', edge: '#ec4899' }, // pink
+  { mid: '#b45309', light: '#fde68a', dark: '#451a03', edge: '#eab308' }, // amber
 ]
-
 const col = (bi: number) => COLORS[bi % COLORS.length]
-
-function buildBranchMap(nodes: Node[], edges: Edge[]): Map<string, number> {
-  const map = new Map<string, number>()
-  const parentOf = new Map<string, string>()
-  edges.forEach((e) => parentOf.set(e.target, e.source))
-  const root = nodes.find((n) => n.data.depth === 0)
-  if (!root) return map
-  map.set(root.id, 0)
-  const l1 = nodes.filter((n) => parentOf.get(n.id) === root.id)
-  l1.forEach((n, i) => map.set(n.id, i + 1))
-  const q = [...l1]
-  while (q.length) {
-    const node = q.shift()!
-    const bi = map.get(node.id)!
-    edges.filter((e) => e.source === node.id).forEach((e) => {
-      const child = nodes.find((n) => n.id === e.target)
-      if (child && !map.has(child.id)) { map.set(child.id, bi); q.push(child) }
-    })
-  }
-  return map
-}
-
-// ─── Layout ───────────────────────────────────────────────
-
-const NW = 130
-const NH = 150
-
-function layout(nodes: Node[], edges: Edge[]): Node[] {
-  const g = new dagre.graphlib.Graph()
-  g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'TB', ranksep: 60, nodesep: 28, marginx: 80, marginy: 80 })
-  nodes.forEach((n) => g.setNode(n.id, { width: NW, height: NH }))
-  edges.forEach((e) => g.setEdge(e.source, e.target))
-  dagre.layout(g)
-  return nodes.map((n) => {
-    const p = g.node(n.id)
-    return { ...n, position: { x: p.x - NW / 2, y: p.y - NH / 2 } }
-  })
-}
 
 // ─── Types ────────────────────────────────────────────────
 
-type ND = {
+type RawNode = { id: string; data: { label: string; referralCode: string; depth: number; joinedAt: string | null } }
+type RawEdge = { source: string; target: string }
+
+type TNode = {
+  id: string
   label: string
   referralCode: string
   depth: number
@@ -83,152 +32,348 @@ type ND = {
   isRoot: boolean
   directCount: number
   branchIndex: number
+  children: TNode[]
+  x: number
+  y: number
 }
 
-// ─── Circle node ──────────────────────────────────────────
+// ─── Build tree ───────────────────────────────────────────
 
-function CircleNode({ data, selected }: { data: ND; selected: boolean }) {
-  const c = col(data.branchIndex)
+function buildTree(rawNodes: RawNode[], rawEdges: RawEdge[]): TNode | null {
+  const childrenOf = new Map<string, string[]>()
+  rawNodes.forEach((n) => childrenOf.set(n.id, []))
+  rawEdges.forEach((e) => childrenOf.get(e.source)?.push(e.target))
+
+  const childIds = new Set(rawEdges.map((e) => e.target))
+  const root = rawNodes.find((n) => !childIds.has(n.id))
+  if (!root) return null
+
+  // branch color map
+  const bmap = new Map<string, number>()
+  bmap.set(root.id, 0)
+  const l1 = (childrenOf.get(root.id) ?? [])
+  l1.forEach((id, i) => bmap.set(id, i + 1))
+  const q = [...l1]
+  while (q.length) {
+    const id = q.shift()!
+    const bi = bmap.get(id)!
+    ;(childrenOf.get(id) ?? []).forEach((cid) => {
+      if (!bmap.has(cid)) { bmap.set(cid, bi); q.push(cid) }
+    })
+  }
+
+  function make(n: RawNode): TNode {
+    const kids = (childrenOf.get(n.id) ?? [])
+      .map((cid) => rawNodes.find((x) => x.id === cid)!)
+      .filter(Boolean)
+      .map(make)
+    return {
+      id: n.id,
+      ...n.data,
+      isRoot: n.data.depth === 0,
+      directCount: kids.length,
+      branchIndex: bmap.get(n.id) ?? 0,
+      children: kids,
+      x: 0,
+      y: 0,
+    }
+  }
+  return make(root)
+}
+
+// ─── Layout (Reingold-Tilford style) ─────────────────────
+
+const R   = 46   // circle radius
+const LH  = 170  // level height (center to center)
+const SEP = 120  // min horizontal separation
+
+function layoutTree(root: TNode): void {
+  // Assign y by depth
+  const assignY = (n: TNode, d: number) => {
+    n.y = d * LH + R + 20
+    n.children.forEach((c) => assignY(c, d + 1))
+  }
+  assignY(root, 0)
+
+  // Assign x using a leaf counter
+  let leaf = 0
+  const assignX = (n: TNode) => {
+    if (!n.children.length) { n.x = leaf++ * SEP; return }
+    n.children.forEach(assignX)
+    n.x = (n.children[0].x + n.children[n.children.length - 1].x) / 2
+  }
+  assignX(root)
+}
+
+function flatten(n: TNode): TNode[] {
+  return [n, ...n.children.flatMap(flatten)]
+}
+
+// ─── SVG edge path (curved) ───────────────────────────────
+
+function edgePath(from: TNode, to: TNode): string {
+  const x1 = from.x, y1 = from.y + R
+  const x2 = to.x,   y2 = to.y - R
+  const mid = (y1 + y2) / 2
+  return `M${x1},${y1} C${x1},${mid} ${x2},${mid} ${x2},${y2}`
+}
+
+// ─── SVG Org-Chart ────────────────────────────────────────
+
+function OrgChart({ root, total }: { root: TNode; total: number }) {
+  const [sel, setSel] = useState<TNode | null>(null)
+
+  // pan / zoom
+  const [vb, setVb] = useState({ x: 0, y: 0, w: 1, h: 1 })
+  const drag = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  const nodes = flatten(root)
+
+  // calculate viewBox to fit all nodes on mount
+  useEffect(() => {
+    const xs = nodes.map((n) => n.x)
+    const ys = nodes.map((n) => n.y)
+    const pad = 100
+    const x = Math.min(...xs) - R - pad
+    const y = Math.min(...ys) - R - pad
+    const w = Math.max(...xs) - Math.min(...xs) + 2 * R + 2 * pad
+    const h = Math.max(...ys) - Math.min(...ys) + 2 * R + 2 * pad + 60
+    setVb({ x, y, w, h })
+  }, [root.id])
+
+  // collect edges
+  const edges: { from: TNode; to: TNode }[] = []
+  const collectEdges = (n: TNode) => {
+    n.children.forEach((c) => { edges.push({ from: n, to: c }); collectEdges(c) })
+  }
+  collectEdges(root)
+
+  // wheel zoom
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const factor = e.deltaY > 0 ? 1.12 : 0.88
+    setVb((v) => ({
+      x: v.x + (v.w * (1 - factor)) / 2,
+      y: v.y + (v.h * (1 - factor)) / 2,
+      w: v.w * factor,
+      h: v.h * factor,
+    }))
+  }
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    drag.current = { sx: e.clientX, sy: e.clientY, vx: vb.x, vy: vb.y }
+  }
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!drag.current || !svgRef.current) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const scaleX = vb.w / rect.width
+    const scaleY = vb.h / rect.height
+    const dx = (e.clientX - drag.current.sx) * scaleX
+    const dy = (e.clientY - drag.current.sy) * scaleY
+    setVb((v) => ({ ...v, x: drag.current!.vx - dx, y: drag.current!.vy - dy }))
+  }
+  const onMouseUp = () => { drag.current = null }
+
+  const maxDepth = nodes.reduce((m, n) => Math.max(m, n.depth), 0)
+  const direct   = nodes.filter((n) => n.depth === 1).length
+
   return (
-    <div style={{ width: NW, height: NH, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <svg
+        ref={svgRef}
+        width="100%"
+        height="100%"
+        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+        style={{ display: 'block', cursor: drag.current ? 'grabbing' : 'grab', userSelect: 'none' }}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+      >
+        {/* Edges */}
+        {edges.map((e, i) => {
+          const c = col(e.to.branchIndex)
+          return (
+            <path
+              key={i}
+              d={edgePath(e.from, e.to)}
+              fill="none"
+              stroke={c.edge}
+              strokeWidth={2.5}
+              strokeOpacity={0.65}
+              strokeLinecap="round"
+            />
+          )
+        })}
 
-      <Handle type="target" position={Position.Top}
-        style={{ background: c.edge, border: 'none', width: 8, height: 8, top: 0 }} />
+        {/* Nodes */}
+        {nodes.map((n) => {
+          const c   = col(n.branchIndex)
+          const isSel = sel?.id === n.id
+          const lblMaxLen = 11
+          const lbl = n.label.length > lblMaxLen ? n.label.slice(0, lblMaxLen - 1) + '…' : n.label
 
-      {/* Circle */}
+          return (
+            <g
+              key={n.id}
+              onClick={() => setSel(isSel ? null : n)}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* Glow ring when selected */}
+              {isSel && (
+                <circle cx={n.x} cy={n.y} r={R + 7}
+                  fill="none" stroke={c.edge} strokeWidth={2.5} strokeOpacity={0.55} />
+              )}
+
+              {/* Shadow */}
+              <circle cx={n.x} cy={n.y + 5} r={R}
+                fill="rgba(0,0,0,0.35)" />
+
+              {/* Main circle */}
+              <circle cx={n.x} cy={n.y} r={R}
+                fill={c.mid}
+                stroke={isSel ? 'rgba(255,255,255,0.85)' : c.light}
+                strokeWidth={isSel ? 3 : 2}
+                strokeOpacity={isSel ? 1 : 0.4}
+              />
+
+              {/* Highlight (shine) */}
+              <ellipse cx={n.x - R * 0.28} cy={n.y - R * 0.3} rx={R * 0.45} ry={R * 0.3}
+                fill={c.light} fillOpacity={0.22} />
+
+              {/* Person — head */}
+              <circle cx={n.x} cy={n.y - 11} r={10}
+                fill="rgba(255,255,255,0.92)" />
+
+              {/* Person — body */}
+              <path
+                d={`M${n.x - 17},${n.y + 20} Q${n.x - 17},${n.y + 4} ${n.x},${n.y + 4} Q${n.x + 17},${n.y + 4} ${n.x + 17},${n.y + 20}`}
+                fill="rgba(255,255,255,0.92)"
+              />
+
+              {/* YOU badge */}
+              {n.isRoot && (
+                <g>
+                  <rect x={n.x - 18} y={n.y - R - 22} width={36} height={16} rx={8}
+                    fill={c.mid} />
+                  <text x={n.x} y={n.y - R - 9}
+                    textAnchor="middle" fontSize={9} fontWeight="800"
+                    fill="white" fontFamily="system-ui" letterSpacing="1.5">
+                    YOU
+                  </text>
+                </g>
+              )}
+
+              {/* Name */}
+              <text
+                x={n.x} y={n.y + R + 20}
+                textAnchor="middle" fontSize={13} fontWeight="700"
+                fill="white" fontFamily="system-ui, -apple-system, sans-serif"
+              >
+                {lbl}
+              </text>
+
+              {/* Level + invite count */}
+              <text
+                x={n.x} y={n.y + R + 37}
+                textAnchor="middle" fontSize={10} fill={c.light}
+                fontFamily="system-ui" fillOpacity={0.85}
+              >
+                {`L${n.depth}${n.directCount > 0 ? `  ·  ${n.directCount}名` : ''}`}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+
+      {/* Stats */}
       <div style={{
-        marginTop: 4,
-        width: 84,
-        height: 84,
-        borderRadius: '50%',
-        background: `radial-gradient(circle at 36% 34%, ${c.light}bb, ${c.mid})`,
-        border: `3px solid ${selected ? 'rgba(255,255,255,0.85)' : c.light + '55'}`,
-        boxShadow: selected
-          ? `0 0 0 5px ${c.mid}50, 0 8px 28px ${c.mid}70`
-          : `0 6px 24px ${c.mid}60`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        cursor: 'pointer',
-        transition: 'box-shadow .2s, border-color .2s',
+        position: 'absolute', left: 16, top: 16, zIndex: 10,
+        background: 'rgba(10,12,24,0.95)', backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16,
+        padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       }}>
-        {/* person icon */}
-        <svg width={data.isRoot ? 42 : 36} height={data.isRoot ? 42 : 36} viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)">
-          <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v1h20v-1c0-3.33-6.67-5-10-5z" />
-        </svg>
-      </div>
-
-      {/* Labels */}
-      <div style={{ marginTop: 8, textAlign: 'center', width: NW, paddingLeft: 4, paddingRight: 4 }}>
-        {data.isRoot && (
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: c.light, textTransform: 'uppercase', marginBottom: 2 }}>
-            YOU
-          </div>
-        )}
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {data.label}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 3 }}>
-          <span style={{ fontSize: 10, color: c.light, fontWeight: 600 }}>L{data.depth}</span>
-          {data.directCount > 0 && (
-            <span style={{ fontSize: 10, color: c.light }}>· {data.directCount}名</span>
-          )}
-        </div>
-        {data.joinedAt && !data.isRoot && (
-          <div style={{ fontSize: 9, color: 'rgba(156,163,175,0.65)', marginTop: 2 }}>
-            {new Date(data.joinedAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-          </div>
-        )}
-      </div>
-
-      <Handle type="source" position={Position.Bottom}
-        style={{ background: c.edge, border: 'none', width: 8, height: 8, bottom: 0 }} />
-    </div>
-  )
-}
-
-const nodeTypes = { circle: CircleNode }
-
-// ─── Detail panel ─────────────────────────────────────────
-
-function DetailPanel({ node, onClose }: { node: Node; onClose: () => void }) {
-  const d = node.data as ND
-  const c = col(d.branchIndex)
-  return (
-    <div style={{
-      position: 'absolute', right: 16, top: 16, zIndex: 10,
-      width: 240, borderRadius: 20,
-      background: 'rgba(10,12,24,0.97)',
-      border: `1px solid ${c.edge}55`,
-      boxShadow: `0 0 40px ${c.mid}20, 0 10px 40px rgba(0,0,0,0.7)`,
-      backdropFilter: 'blur(24px)',
-      overflow: 'hidden',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${c.edge}28`, background: c.dark }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${c.light}99, ${c.mid})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)">
-              <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v1h20v-1c0-3.33-6.67-5-10-5z" />
-            </svg>
-          </div>
-          <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{d.label}</span>
-        </div>
-        <button onClick={onClose} style={{ color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-          <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {([
-          ['レベル', `L${d.depth}`],
-          ['招待コード', d.referralCode],
-          ...(d.joinedAt ? [['登録日', new Date(d.joinedAt).toLocaleDateString('ja-JP')]] : []),
-          ...(d.directCount > 0 ? [['直接招待', `${d.directCount}名`]] : []),
-        ] as [string, string][]).map(([lbl, val]) => (
-          <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: '#6b7280', fontSize: 12 }}>{lbl}</span>
-            <span style={{ color: c.light, fontSize: 12, fontWeight: 500, wordBreak: 'break-all', textAlign: 'right' }}>{val}</span>
+        <div style={{ fontSize: 9, fontWeight: 700, color: '#4b5563', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Network</div>
+        {([['総メンバー', total, '#f8fafc'], ['直接招待', direct, '#4ade80'], ['最大深度', `L${maxDepth}`, '#c084fc']] as [string, string|number, string][]).map(([l, v, c]) => (
+          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 32 }}>
+            <span style={{ fontSize: 11, color: '#6b7280' }}>{l}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: c }}>{v}</span>
           </div>
         ))}
       </div>
-    </div>
-  )
-}
 
-// ─── Stats badge ──────────────────────────────────────────
-
-function StatsBadge({ nodes, total }: { nodes: Node[]; total: number }) {
-  const maxDepth = nodes.reduce((m, n) => Math.max(m, (n.data as ND).depth), 0)
-  const direct   = nodes.filter((n) => (n.data as ND).depth === 1).length
-  return (
-    <div style={{
-      position: 'absolute', left: 16, top: 16, zIndex: 10,
-      borderRadius: 16, border: '1px solid rgba(255,255,255,0.08)',
-      background: 'rgba(10,12,24,0.95)', backdropFilter: 'blur(20px)',
-      padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-    }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color: '#4b5563', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Network</div>
-      {([['総メンバー', total, '#f8fafc'], ['直接招待', direct, '#4ade80'], ['最大深度', `L${maxDepth}`, '#c084fc']] as [string, string|number, string][]).map(([l, v, c]) => (
-        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 32 }}>
-          <span style={{ fontSize: 11, color: '#6b7280' }}>{l}</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: c }}>{v}</span>
+      {/* Detail panel */}
+      {sel && (
+        <div style={{
+          position: 'absolute', right: 16, top: 16, zIndex: 10,
+          width: 240, borderRadius: 20, overflow: 'hidden',
+          background: 'rgba(10,12,24,0.97)', backdropFilter: 'blur(24px)',
+          border: `1px solid ${col(sel.branchIndex).edge}55`,
+          boxShadow: `0 0 40px ${col(sel.branchIndex).mid}22, 0 10px 40px rgba(0,0,0,0.7)`,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', borderBottom: `1px solid ${col(sel.branchIndex).edge}28`,
+            background: col(sel.branchIndex).dark,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: col(sel.branchIndex).mid,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+              </div>
+              <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {sel.label}
+              </span>
+            </div>
+            <button onClick={() => setSel(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }}>
+              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {([
+              ['レベル', `L${sel.depth}`],
+              ['招待コード', sel.referralCode],
+              ...(sel.joinedAt ? [['登録日', new Date(sel.joinedAt).toLocaleDateString('ja-JP')]] : []),
+              ...(sel.directCount > 0 ? [['直接招待', `${sel.directCount}名`]] : []),
+            ] as [string, string][]).map(([lbl, val]) => (
+              <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: '#6b7280', fontSize: 12, flexShrink: 0 }}>{lbl}</span>
+                <span style={{ color: col(sel.branchIndex).light, fontSize: 12, fontWeight: 500, textAlign: 'right', wordBreak: 'break-all' }}>{val}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
+      )}
+
+      {/* Hint */}
+      <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>
+          ドラッグで移動　/　スクロールで拡大縮小
+        </span>
+      </div>
     </div>
   )
 }
 
 // ─── List view ────────────────────────────────────────────
 
-function ListView({ nodes }: { nodes: Node[] }) {
-  const byDepth = nodes.reduce<Record<number, ND[]>>((acc, n) => {
-    const d = (n.data as ND).depth;
-    (acc[d] ??= []).push(n.data as ND)
-    return acc
-  }, {})
+function ListView({ root }: { root: TNode }) {
+  const byDepth: Record<number, TNode[]> = {}
+  flatten(root).forEach((n) => {
+    ;(byDepth[n.depth] ??= []).push(n)
+  })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 16px 32px' }}>
       {Object.entries(byDepth).map(([depth, members]) => {
@@ -240,17 +385,22 @@ function ListView({ nodes }: { nodes: Node[] }) {
               <span style={{ color: '#fff', fontSize: 14, fontWeight: 500 }}>{members.length}名</span>
             </div>
             {members.map((m) => (
-              <div key={m.referralCode} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: `radial-gradient(circle at 36% 34%, ${c.light}99, ${c.mid})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div key={m.id} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: c.mid, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width={18} height={18} viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)">
-                    <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v1h20v-1c0-3.33-6.67-5-10-5z" />
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                   </svg>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: '#fff', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.label}</div>
                   <div style={{ color: c.light, fontSize: 10, fontFamily: 'monospace', marginTop: 2 }}>{m.referralCode}</div>
                 </div>
-                {m.joinedAt && <div style={{ color: '#6b7280', fontSize: 10, flexShrink: 0 }}>{new Date(m.joinedAt).toLocaleDateString('ja-JP')}</div>}
+                {m.joinedAt && (
+                  <div style={{ color: '#6b7280', fontSize: 10, flexShrink: 0 }}>
+                    {new Date(m.joinedAt).toLocaleDateString('ja-JP')}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -266,11 +416,8 @@ function Loading() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#080c18' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ position: 'relative', width: 56, height: 56, margin: '0 auto 16px' }}>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(37,99,235,0.2)', animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
-          <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: '1px solid rgba(37,99,235,0.4)' }} />
-          <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', background: COLORS[0].mid }} />
-        </div>
+        <div style={{ width: 56, height: 56, margin: '0 auto 16px', borderRadius: '50%', border: '3px solid rgba(37,99,235,0.3)', borderTopColor: '#3b82f6', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         <div style={{ color: '#6b7280', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     </div>
@@ -284,14 +431,11 @@ function TreeView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const targetUserId = searchParams.get('userId')
-  const rfRef = useRef<ReactFlowInstance | null>(null)
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [root, setRoot]       = useState<TNode | null>(null)
   const [total, setTotal]     = useState(0)
   const [loading, setLoading] = useState(true)
   const [view, setView]       = useState<'graph' | 'list'>('graph')
-  const [sel, setSel]         = useState<Node | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -305,46 +449,22 @@ function TreeView() {
       .then((r) => r.json())
       .then((data) => {
         if (!data.nodes || !data.edges) return
-        const rn = data.nodes as Node[]
-        const re = data.edges as Edge[]
-        const bmap = buildBranchMap(rn, re)
-
-        const enriched = rn.map((n) => ({
-          ...n,
-          type: 'circle',
-          data: {
-            ...n.data,
-            isRoot:      n.data.depth === 0,
-            directCount: re.filter((e) => e.source === n.id).length,
-            branchIndex: bmap.get(n.id) ?? 0,
-          },
-        }))
-
-        const styled = re.map((e) => {
-          const c = col(bmap.get(e.source) ?? 0)
-          return { ...e, type: 'smoothstep', animated: false, style: { stroke: c.edge + 'a0', strokeWidth: 2.5 } }
-        })
-
-        setNodes(layout(enriched, styled))
-        setEdges(styled)
-        setTotal(data.total)
-
-        // fit after render
-        setTimeout(() => rfRef.current?.fitView({ padding: 0.25 }), 120)
+        const tree = buildTree(data.nodes as RawNode[], data.edges as RawEdge[])
+        if (tree) {
+          layoutTree(tree)
+          setRoot(tree)
+          setTotal(data.total)
+        }
       })
       .finally(() => setLoading(false))
   }, [session, targetUserId])
-
-  const onNodeClick = useCallback<NodeMouseHandler>((_e, n) => {
-    setSel((p) => (p?.id === n.id ? null : n))
-  }, [])
 
   if (loading) return <Loading />
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#080c18' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,12,24,0.98)', backdropFilter: 'blur(20px)' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,12,24,0.98)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <a href="/partner" style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.07)', color: '#6b7280', textDecoration: 'none' }}>
             <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -362,7 +482,6 @@ function TreeView() {
               padding: '6px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none',
               background: view === m ? '#7c3aed' : 'rgba(255,255,255,0.03)',
               color: view === m ? '#fff' : '#6b7280',
-              transition: 'background .15s, color .15s',
             }}>
               {m === 'graph' ? 'グラフ' : 'リスト'}
             </button>
@@ -371,48 +490,28 @@ function TreeView() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {nodes.length === 0 ? (
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative', minHeight: 0 }}>
+        {!root ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 20, padding: '0 24px', textAlign: 'center' }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle at 36% 34%, ${COLORS[0].light}99, ${COLORS[0].mid})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 40px ${COLORS[0].mid}60` }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: COLORS[0].mid, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width={40} height={40} viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)">
-                <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v1h20v-1c0-3.33-6.67-5-10-5z" />
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
               </svg>
             </div>
             <div>
               <p style={{ color: '#d1d5db', fontWeight: 600, marginBottom: 6 }}>まだ招待したユーザーがいません</p>
               <p style={{ color: '#6b7280', fontSize: 14 }}>招待リンクを共有してネットワークを広げましょう</p>
             </div>
-            <a href="/partner" style={{ background: '#7c3aed', color: '#fff', padding: '10px 24px', borderRadius: 12, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>ダッシュボードへ</a>
+            <a href="/partner" style={{ background: '#7c3aed', color: '#fff', padding: '10px 24px', borderRadius: 12, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
+              ダッシュボードへ
+            </a>
           </div>
         ) : view === 'graph' ? (
-          <>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              nodeTypes={nodeTypes}
-              onNodeClick={onNodeClick}
-              onPaneClick={() => setSel(null)}
-              onInit={(instance) => { rfRef.current = instance }}
-              minZoom={0.1}
-              maxZoom={3}
-              style={{ background: 'transparent', width: '100%', height: '100%' }}
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={BackgroundVariant.Dots} color="rgba(255,255,255,0.03)" gap={32} size={1} />
-              <Controls
-                style={{ background: 'rgba(10,12,24,0.92)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, backdropFilter: 'blur(12px)' }}
-                showInteractive={false}
-              />
-            </ReactFlow>
-            <StatsBadge nodes={nodes} total={total} />
-            {sel && <DetailPanel node={sel} onClose={() => setSel(null)} />}
-          </>
+          <OrgChart root={root} total={total} />
         ) : (
           <div style={{ height: '100%', overflowY: 'auto', paddingTop: 16 }}>
-            <ListView nodes={nodes} />
+            <ListView root={root} />
           </div>
         )}
       </div>
