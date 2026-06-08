@@ -48,7 +48,7 @@ export default function AdminPartnersPage() {
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">パートナー管理</h1>
+        <h1 className="text-2xl font-display font-light text-lw-text-primary">パートナー管理</h1>
         {pendingCount > 0 && (
           <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
             {pendingCount}件 承認待ち
@@ -63,8 +63,8 @@ export default function AdminPartnersPage() {
             onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               filter === f
-                ? 'bg-violet-600 text-white'
-                : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                ? 'bg-lw-gold text-lw-void'
+                : 'bg-lw-raised text-lw-text-tertiary hover:text-lw-text-secondary border border-lw-gold/10'
             }`}
           >
             {f === 'pending' ? '承認待ち' : f === 'active' ? '承認済み' : 'すべて'}
@@ -74,20 +74,20 @@ export default function AdminPartnersPage() {
 
       <div className="space-y-4">
         {loading ? (
-          <div className="text-gray-500 text-center py-8">読み込み中...</div>
+          <div className="text-lw-text-tertiary text-center py-8">読み込み中...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-gray-500 text-center py-8">該当するパートナーがいません</div>
+          <div className="text-lw-text-tertiary text-center py-8">該当するパートナーがいません</div>
         ) : (
           filtered.map((p) => (
-            <div key={p.id} className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
+            <div key={p.id} className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="text-white font-semibold">{p.displayName}</span>
+                    <span className="text-lw-text-primary font-semibold">{p.displayName}</span>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full border ${
                         p.status === 'active'
-                          ? 'bg-emerald-900/50 text-emerald-400 border-emerald-700'
+                          ? 'bg-lw-teal-muted/40 text-lw-teal border-lw-teal-mid/50'
                           : p.status === 'pending'
                           ? 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
                           : 'bg-red-900/50 text-red-400 border-red-700'
@@ -96,21 +96,21 @@ export default function AdminPartnersPage() {
                       {p.status === 'active' ? '承認済' : p.status === 'pending' ? '申請中' : '却下'}
                     </span>
                   </div>
-                  <div className="text-gray-400 text-sm">
+                  <div className="text-lw-text-secondary text-sm">
                     {p.user.name} / {p.user.email}
                   </div>
-                  {p.bio && <div className="text-gray-500 text-sm mt-2">{p.bio}</div>}
+                  {p.bio && <div className="text-lw-text-tertiary text-sm mt-2">{p.bio}</div>}
                   {p.websiteUrl && (
                     <a
                       href={p.websiteUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-violet-400 text-xs mt-1 inline-block hover:underline"
+                      className="text-lw-gold text-xs mt-1 inline-block hover:underline"
                     >
                       {p.websiteUrl}
                     </a>
                   )}
-                  <div className="text-gray-600 text-xs mt-2">
+                  <div className="text-lw-text-tertiary text-xs mt-2">
                     申請日: {new Date(p.createdAt).toLocaleDateString('ja-JP')} ／ 招待実績: {p.user._count.sentInvites}件
                   </div>
                 </div>

@@ -45,36 +45,36 @@ export default function InvitePage() {
     setGenerating(false)
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL ?? '')
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-white p-6">
+    <div className="min-h-screen bg-lw-void text-lw-text-primary p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-violet-400">招待コード管理</h1>
-          <a href="/partner" className="text-gray-400 hover:text-white text-sm transition-colors">
+          <h1 className="text-3xl font-display font-light text-lw-gold">招待コード管理</h1>
+          <a href="/partner" className="text-lw-text-secondary hover:text-lw-text-primary text-sm transition-colors">
             ← ダッシュボードへ
           </a>
         </div>
 
         {/* 新規発行 */}
-        <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
-          <h2 className="text-lg font-semibold text-gray-300 mb-4">新しい招待コードを発行</h2>
+        <div className="bg-lw-surface rounded-2xl p-6 border border-lw-gold/10">
+          <h2 className="text-sm font-medium text-lw-text-secondary mb-4 tracking-[0.04em]">新しい招待コードを発行</h2>
           <button
             onClick={generateCode}
             disabled={generating}
-            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+            className="bg-lw-gold hover:bg-lw-gold-mid disabled:opacity-50 text-lw-void px-6 py-2.5 rounded-lg font-medium transition-colors"
           >
             {generating ? '発行中...' : '招待コードを発行する'}
           </button>
           {newCode && (
-            <div className="mt-4 bg-[#0f0f1a] border border-violet-500/50 rounded-lg p-4">
-              <p className="text-xs text-gray-400 mb-1">新しい招待URL</p>
-              <p className="font-mono text-violet-300 break-all text-sm">{newCode}</p>
+            <div className="mt-4 bg-lw-raised border border-lw-gold/40 rounded-lg p-4">
+              <p className="text-xs text-lw-text-tertiary mb-1 tracking-[0.06em] uppercase">新しい招待URL</p>
+              <p className="font-mono text-lw-gold break-all text-sm">{newCode}</p>
               <div className="flex gap-3 mt-3">
                 <button
                   onClick={() => navigator.clipboard.writeText(newCode)}
-                  className="text-xs bg-violet-900/50 hover:bg-violet-900 border border-violet-700 text-violet-300 px-3 py-1.5 rounded-lg transition-colors"
+                  className="text-xs bg-lw-gold-muted/30 hover:bg-lw-gold-muted/50 border border-lw-gold-muted text-lw-gold px-3 py-1.5 rounded-lg transition-colors"
                 >
                   コピー
                 </button>
@@ -87,7 +87,7 @@ export default function InvitePage() {
                   Xでシェア
                 </a>
                 <a
-                  href={`https://line.me/R/msg/text/?${encodeURIComponent(newCode)}`}
+                  href={`https://line.me/R/msg/text/?${encodeURIComponent(`LUXE WAVEへの招待リンクです\n${newCode}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs bg-green-900/50 hover:bg-green-900 border border-green-700 text-green-300 px-3 py-1.5 rounded-lg transition-colors"
@@ -100,32 +100,33 @@ export default function InvitePage() {
         </div>
 
         {/* 発行済み一覧 */}
-        <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
-          <h2 className="text-lg font-semibold text-gray-300 mb-4">
-            発行済みコード一覧 <span className="text-gray-500 text-sm font-normal">({invites.length}件)</span>
+        <div className="bg-lw-surface rounded-2xl p-6 border border-lw-gold/10">
+          <h2 className="text-sm font-medium text-lw-text-secondary mb-4 tracking-[0.04em]">
+            発行済みコード一覧{' '}
+            <span className="text-lw-text-tertiary font-normal">({invites.length}件)</span>
           </h2>
           {invites.length === 0 ? (
-            <p className="text-gray-500 text-sm">まだ招待コードがありません</p>
+            <p className="text-lw-text-tertiary text-sm">まだ招待コードがありません</p>
           ) : (
             <div className="space-y-2">
               {invites.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between bg-[#0f0f1a] rounded-lg px-4 py-3 border border-white/5"
+                  className="flex items-center justify-between bg-lw-raised rounded-lg px-4 py-3 border border-lw-gold/5"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="font-mono text-violet-400 text-sm">{log.inviteCode}</span>
-                    <span className="text-gray-500 text-xs">
+                    <span className="font-mono text-lw-gold text-sm">{log.inviteCode}</span>
+                    <span className="text-lw-text-tertiary text-xs">
                       {new Date(log.invitedAt).toLocaleDateString('ja-JP')} 発行
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
                     {log.joinedAt ? (
-                      <span className="bg-emerald-900/50 text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-700">
+                      <span className="bg-lw-teal-muted/40 text-lw-teal text-xs px-2 py-0.5 rounded-full border border-lw-teal-mid/50">
                         {log.invitee?.name ?? '匿名'} 登録済
                       </span>
                     ) : (
-                      <span className="bg-yellow-900/50 text-yellow-400 text-xs px-2 py-0.5 rounded-full border border-yellow-700">
+                      <span className="bg-lw-gold-muted/30 text-lw-gold text-xs px-2 py-0.5 rounded-full border border-lw-gold-muted">
                         未使用
                       </span>
                     )}
@@ -133,7 +134,7 @@ export default function InvitePage() {
                       onClick={() =>
                         navigator.clipboard.writeText(`${baseUrl}/?ref=${log.inviteCode}`)
                       }
-                      className="text-xs text-gray-400 hover:text-white transition-colors"
+                      className="text-xs text-lw-text-tertiary hover:text-lw-text-primary transition-colors"
                     >
                       コピー
                     </button>

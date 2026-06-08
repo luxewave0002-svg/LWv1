@@ -10,11 +10,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white flex">
+    <div className="min-h-screen bg-lw-deep text-lw-text-primary flex">
       {/* サイドバー */}
-      <aside className="w-56 bg-[#0f0f1a] border-r border-white/10 flex flex-col py-6">
+      <aside className="w-56 bg-lw-void border-r border-lw-gold/10 flex flex-col py-6">
         <div className="px-5 mb-8">
-          <span className="text-violet-400 font-bold text-lg">管理者パネル</span>
+          <span className="font-display font-medium tracking-[0.2em] text-base uppercase select-none">
+            <span className="text-lw-gold">LUXE</span>
+            <span className="ml-1.5 text-lw-text-primary">WAVE</span>
+          </span>
+          <p className="text-lw-text-tertiary text-[10px] tracking-[0.1em] mt-1 uppercase">管理者パネル</p>
         </div>
         <nav className="flex-1 px-3 space-y-1">
           {[
@@ -27,19 +31,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <a
               key={item.href}
               href={item.href}
-              className="block px-3 py-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors text-sm"
+              className="block px-3 py-2 rounded-lg text-lw-text-secondary hover:bg-lw-gold/10 hover:text-lw-text-primary transition-colors text-sm"
             >
               {item.label}
             </a>
           ))}
         </nav>
-        <div className="px-5 mt-4 space-y-2 border-t border-white/10 pt-4">
-          <div className="text-xs text-gray-500 px-3 truncate">
+        <div className="px-5 mt-4 space-y-2 border-t border-lw-gold/10 pt-4">
+          <div className="text-xs text-lw-text-tertiary px-3 truncate">
             {session.user.name ?? session.user.email}
           </div>
           <a
             href="/partner"
-            className="block px-3 py-2 rounded-lg text-gray-500 hover:bg-white/10 hover:text-gray-300 transition-colors text-sm"
+            className="block px-3 py-2 rounded-lg text-lw-text-tertiary hover:bg-lw-gold/10 hover:text-lw-text-secondary transition-colors text-sm"
           >
             パートナー画面へ
           </a>

@@ -24,10 +24,10 @@ type Purchase = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  paid: 'text-emerald-400',
+  paid: 'text-lw-teal',
   pending: 'text-yellow-400',
   failed: 'text-red-400',
-  refunded: 'text-gray-400',
+  refunded: 'text-lw-text-tertiary',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -50,7 +50,6 @@ export default function AdminPaymentsPage() {
       .finally(() => setLoading(false))
   }, [statusFilter])
 
-  // 月別集計
   const monthlySales = purchases
     .filter((p) => p.status === 'paid' && p.paidAt)
     .reduce<Record<string, number>>((acc, p) => {
@@ -72,28 +71,28 @@ export default function AdminPaymentsPage() {
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">決済管理</h1>
+        <h1 className="text-2xl font-display font-light text-lw-text-primary">決済管理</h1>
         <button
           onClick={exportCsv}
-          className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          className="border border-lw-gold/15 hover:border-lw-gold/30 text-lw-text-secondary hover:text-lw-text-primary px-4 py-2 rounded-lg text-sm transition-colors"
         >
           CSVエクスポート
         </button>
       </div>
 
       {chartData.length > 0 && (
-        <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-          <h2 className="text-gray-300 font-semibold mb-4">月別売上</h2>
+        <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
+          <h2 className="text-lw-text-secondary text-xs font-medium mb-4 tracking-[0.06em] uppercase">月別売上</h2>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-              <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,168,67,0.08)" />
+              <XAxis dataKey="month" tick={{ fill: '#9A9590', fontSize: 12 }} />
+              <YAxis tick={{ fill: '#9A9590', fontSize: 12 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
               <Tooltip
-                contentStyle={{ background: '#1a1a2e', border: '1px solid #ffffff20', borderRadius: 8 }}
+                contentStyle={{ background: '#141828', border: '1px solid rgba(212,168,67,0.15)', borderRadius: 8, color: '#F0EDE8' }}
                 formatter={(v) => [`¥${Number(v).toLocaleString()}`, '売上']}
               />
-              <Bar dataKey="amount" fill="#7c3aed" radius={4} />
+              <Bar dataKey="amount" fill="#D4A843" radius={4} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -107,23 +106,23 @@ export default function AdminPaymentsPage() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 statusFilter === s
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                  ? 'bg-lw-gold text-lw-void'
+                  : 'bg-lw-raised text-lw-text-tertiary hover:text-lw-text-secondary border border-lw-gold/10'
               }`}
             >
               {s === 'all' ? 'すべて' : STATUS_LABELS[s]}
             </button>
           ))}
         </div>
-        <div className="text-emerald-400 font-bold">
+        <div className="text-lw-teal font-display font-light text-lg">
           合計: ¥{totalPaid.toLocaleString()}
         </div>
       </div>
 
-      <div className="bg-[#1a1a2e] rounded-2xl border border-white/10 overflow-hidden">
+      <div className="bg-lw-surface rounded-2xl border border-lw-gold/10 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="border-b border-white/10">
-            <tr className="text-gray-400">
+          <thead className="border-b border-lw-gold/10">
+            <tr className="text-lw-text-secondary">
               {['ユーザー', 'プラン', '金額', 'ステータス', '日時'].map((h) => (
                 <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>
               ))}
@@ -131,24 +130,24 @@ export default function AdminPaymentsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-8 text-gray-500">読み込み中...</td></tr>
+              <tr><td colSpan={5} className="text-center py-8 text-lw-text-tertiary">読み込み中...</td></tr>
             ) : purchases.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-8 text-gray-500">決済履歴がありません</td></tr>
+              <tr><td colSpan={5} className="text-center py-8 text-lw-text-tertiary">決済履歴がありません</td></tr>
             ) : (
               purchases.map((p) => (
-                <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={p.id} className="border-b border-lw-gold/5 hover:bg-lw-gold/[0.03] transition-colors">
                   <td className="px-4 py-3">
-                    <div className="text-white">{p.user.name ?? '—'}</div>
-                    <div className="text-gray-500 text-xs">{p.user.email}</div>
+                    <div className="text-lw-text-primary">{p.user.name ?? '—'}</div>
+                    <div className="text-lw-text-tertiary text-xs">{p.user.email}</div>
                   </td>
-                  <td className="px-4 py-3 text-gray-300">{p.plan.name}</td>
-                  <td className="px-4 py-3 text-white font-mono">¥{p.amountJpy.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-lw-text-secondary">{p.plan.name}</td>
+                  <td className="px-4 py-3 text-lw-text-primary font-mono">¥{p.amountJpy.toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs ${STATUS_COLORS[p.status] ?? 'text-gray-400'}`}>
+                    <span className={`text-xs ${STATUS_COLORS[p.status] ?? 'text-lw-text-tertiary'}`}>
                       {STATUS_LABELS[p.status] ?? p.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
+                  <td className="px-4 py-3 text-lw-text-secondary text-xs">
                     {p.paidAt
                       ? new Date(p.paidAt).toLocaleDateString('ja-JP')
                       : new Date(p.createdAt).toLocaleDateString('ja-JP')}

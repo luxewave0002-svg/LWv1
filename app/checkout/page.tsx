@@ -44,7 +44,6 @@ export default function CheckoutPage() {
     setError('')
 
     try {
-      // モック: transactionTokenId を生成
       const mockTokenId = `mock_token_${Date.now()}`
 
       const res = await fetch('/api/univapay/charge', {
@@ -68,14 +67,14 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-white p-6">
+    <div className="min-h-screen bg-lw-void text-lw-text-primary p-6">
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-violet-400">プランを選択</h1>
+        <h1 className="text-3xl font-display font-light text-lw-gold">プランを選択</h1>
 
         {/* プラン一覧 */}
         <div className="space-y-3">
           {plans.length === 0 && (
-            <div className="bg-[#1a1a2e] rounded-2xl p-8 text-center text-gray-500 border border-white/10">
+            <div className="bg-lw-surface rounded-2xl p-8 text-center text-lw-text-tertiary border border-lw-gold/10">
               利用可能なプランがありません
             </div>
           )}
@@ -83,28 +82,28 @@ export default function CheckoutPage() {
             <button
               key={plan.id}
               onClick={() => setSelectedPlan(plan)}
-              className={`w-full text-left bg-[#1a1a2e] rounded-2xl p-5 border-2 transition-all ${
+              className={`w-full text-left bg-lw-surface rounded-2xl p-5 border-2 transition-all ${
                 selectedPlan?.id === plan.id
-                  ? 'border-violet-500 shadow-lg shadow-violet-500/20'
-                  : 'border-white/10 hover:border-white/30'
+                  ? 'border-lw-gold shadow-lg'
+                  : 'border-lw-gold/10 hover:border-lw-gold/25'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-lg text-white">{plan.name}</div>
+                  <div className="font-semibold text-lg text-lw-text-primary">{plan.name}</div>
                   {plan.description && (
-                    <div className="text-gray-400 text-sm mt-1">{plan.description}</div>
+                    <div className="text-lw-text-secondary text-sm mt-1">{plan.description}</div>
                   )}
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-xs text-lw-text-tertiary mt-1">
                     {BILLING_LABEL[plan.billingType] ?? plan.billingType}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-violet-400">
+                  <div className="text-3xl font-display font-light text-lw-gold">
                     ¥{plan.priceJpy.toLocaleString()}
                   </div>
                   {selectedPlan?.id === plan.id && (
-                    <div className="text-xs text-violet-400 mt-1">✓ 選択中</div>
+                    <div className="text-xs text-lw-gold mt-1">✓ 選択中</div>
                   )}
                 </div>
               </div>
@@ -112,22 +111,16 @@ export default function CheckoutPage() {
           ))}
         </div>
 
-        {/* UnivaPay ウィジェット（本番用コメントアウト） */}
-        {/* 本番実装では以下のScript + ウィジェット埋め込みを使用:
-        <Script src="https://widget.univapay.com/client/checkout.js" strategy="afterInteractive" />
-        <div id="univapay-widget" data-app-id={process.env.NEXT_PUBLIC_UNIVAPAY_APP_ID} ... />
-        */}
-
         {selectedPlan && (
-          <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-violet-500/30">
-            <h2 className="font-semibold text-gray-300 mb-4">お支払い確認</h2>
+          <div className="bg-lw-surface rounded-2xl p-6 border border-lw-gold/30">
+            <h2 className="text-sm font-medium text-lw-text-secondary mb-4 tracking-[0.04em]">お支払い確認</h2>
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">プラン</span>
-              <span className="text-white">{selectedPlan.name}</span>
+              <span className="text-lw-text-secondary">プラン</span>
+              <span className="text-lw-text-primary">{selectedPlan.name}</span>
             </div>
             <div className="flex justify-between mb-6">
-              <span className="text-gray-400">金額</span>
-              <span className="text-violet-400 font-bold text-xl">
+              <span className="text-lw-text-secondary">金額</span>
+              <span className="text-lw-gold font-display font-light text-2xl">
                 ¥{selectedPlan.priceJpy.toLocaleString()}
               </span>
             </div>
@@ -137,11 +130,11 @@ export default function CheckoutPage() {
             <button
               onClick={handlePurchase}
               disabled={processing}
-              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
+              className="w-full bg-lw-gold hover:bg-lw-gold-mid disabled:opacity-50 text-lw-void font-semibold py-3 rounded-xl transition-colors"
             >
               {processing ? '処理中...' : '購入する（モック）'}
             </button>
-            <p className="text-xs text-gray-500 text-center mt-3">
+            <p className="text-xs text-lw-text-tertiary text-center mt-3">
               ※ 現在はモック決済です。UnivaPayトークン取得後に本番実装に切り替えます。
             </p>
           </div>

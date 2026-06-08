@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import ReactFlow, {
   Background,
   Controls,
@@ -16,7 +16,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import dagre from '@dagrejs/dagre'
 
-const DEPTH_COLORS = ['#7c3aed', '#059669', '#d97706', '#db2777', '#2563eb']
+const DEPTH_COLORS = ['#D4A843', '#059669', '#d97706', '#db2777', '#2563eb']
 
 function applyDagreLayout(nodes: Node[], edges: Edge[]) {
   const g = new dagre.graphlib.Graph()
@@ -36,8 +36,8 @@ type NodeData = { label: string; referralCode: string; depth: number; joinedAt: 
 function CustomNode({ data }: { data: NodeData }) {
   const color = DEPTH_COLORS[data.depth % DEPTH_COLORS.length]
   return (
-    <div style={{ borderColor: color }} className="bg-[#1a1a2e] border-2 rounded-xl px-3 py-2 shadow-md min-w-[140px] text-center">
-      <div className="text-white text-xs font-semibold truncate">{data.label}</div>
+    <div style={{ borderColor: color }} className="bg-lw-surface border-2 rounded-xl px-3 py-2 shadow-md min-w-[140px] text-center">
+      <div className="text-lw-text-primary text-xs font-semibold truncate">{data.label}</div>
       <div style={{ color }} className="font-mono text-xs">{data.referralCode}</div>
     </div>
   )
@@ -75,18 +75,18 @@ export default function AdminTreePage() {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="flex items-center gap-4 px-6 py-3 border-b border-white/10 bg-[#0f0f1a]">
-        <h1 className="text-lg font-bold text-violet-400 flex-shrink-0">全体ツリービュー</h1>
-        <span className="text-gray-500 text-sm">総人数: {total}</span>
+      <div className="flex items-center gap-4 px-6 py-3 border-b border-lw-gold/10 bg-lw-void">
+        <h1 className="text-lg font-display font-light text-lw-gold flex-shrink-0">全体ツリービュー</h1>
+        <span className="text-lw-text-tertiary text-sm">総人数: {total}</span>
         <div className="flex items-center gap-2 ml-auto">
-          <label className="text-gray-400 text-xs">深さ上限: {maxDepth}</label>
+          <label className="text-lw-text-secondary text-xs">深さ上限: {maxDepth}</label>
           <input
             type="range"
             min={1}
             max={30}
             value={maxDepth}
             onChange={(e) => setMaxDepth(Number(e.target.value))}
-            className="w-24 accent-violet-500"
+            className="w-24 accent-[#D4A843]"
           />
         </div>
         <div className="flex gap-2">
@@ -95,11 +95,11 @@ export default function AdminTreePage() {
             placeholder="ユーザーIDで検索..."
             value={searchId}
             onChange={(e) => setSearchId(e.target.value)}
-            className="bg-[#1a1a2e] border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500 w-48"
+            className="bg-lw-surface border border-lw-gold/15 rounded-lg px-3 py-1.5 text-sm text-lw-text-primary placeholder:text-lw-text-tertiary focus:outline-none focus:border-lw-gold-muted transition-colors w-48"
           />
           <button
             onClick={() => loadTree(searchId || undefined)}
-            className="bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+            className="bg-lw-gold hover:bg-lw-gold-mid text-lw-void px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
           >
             表示
           </button>
@@ -113,11 +113,11 @@ export default function AdminTreePage() {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           fitView
-          style={{ background: '#0a0a14' }}
+          style={{ background: '#05060f' }}
         >
-          <Background color="#1a1a2e" gap={20} />
+          <Background color="#141828" gap={20} />
           <Controls />
-          <MiniMap nodeColor={(n) => DEPTH_COLORS[(n.data as NodeData).depth % DEPTH_COLORS.length]} style={{ background: '#1a1a2e' }} />
+          <MiniMap nodeColor={(n) => DEPTH_COLORS[(n.data as NodeData).depth % DEPTH_COLORS.length]} style={{ background: '#141828' }} />
         </ReactFlow>
       </div>
     </div>

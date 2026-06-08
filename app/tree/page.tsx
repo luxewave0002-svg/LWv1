@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, useRef, Suspense } from 'react'
+import { useEffect, useState, useRef, useMemo, Suspense } from 'react'
 
 // ─── Colors ───────────────────────────────────────────────
 
@@ -48,7 +48,6 @@ function buildTree(rawNodes: RawNode[], rawEdges: RawEdge[]): TNode | null {
   const root = rawNodes.find((n) => !childIds.has(n.id))
   if (!root) return null
 
-  // branch color map
   const bmap = new Map<string, number>()
   bmap.set(root.id, 0)
   const l1 = (childrenOf.get(root.id) ?? [])
@@ -83,19 +82,17 @@ function buildTree(rawNodes: RawNode[], rawEdges: RawEdge[]): TNode | null {
 
 // ─── Layout (Reingold-Tilford style) ─────────────────────
 
-const R   = 46   // circle radius
-const LH  = 170  // level height (center to center)
-const SEP = 120  // min horizontal separation
+const R   = 46
+const LH  = 170
+const SEP = 120
 
 function layoutTree(root: TNode): void {
-  // Assign y by depth
   const assignY = (n: TNode, d: number) => {
     n.y = d * LH + R + 20
     n.children.forEach((c) => assignY(c, d + 1))
   }
   assignY(root, 0)
 
-  // Assign x using a leaf counter
   let leaf = 0
   const assignX = (n: TNode) => {
     if (!n.children.length) { n.x = leaf++ * SEP; return }
@@ -123,14 +120,12 @@ function edgePath(from: TNode, to: TNode): string {
 function OrgChart({ root, total }: { root: TNode; total: number }) {
   const [sel, setSel] = useState<TNode | null>(null)
 
-  // pan / zoom
   const [vb, setVb] = useState({ x: 0, y: 0, w: 1, h: 1 })
   const drag = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
-  const nodes = flatten(root)
+  const nodes = useMemo(() => flatten(root), [root.id])
 
-  // calculate viewBox to fit all nodes on mount
   useEffect(() => {
     const xs = nodes.map((n) => n.x)
     const ys = nodes.map((n) => n.y)
@@ -142,14 +137,15 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
     setVb({ x, y, w, h })
   }, [root.id])
 
-  // collect edges
-  const edges: { from: TNode; to: TNode }[] = []
-  const collectEdges = (n: TNode) => {
-    n.children.forEach((c) => { edges.push({ from: n, to: c }); collectEdges(c) })
-  }
-  collectEdges(root)
+  const edges = useMemo(() => {
+    const result: { from: TNode; to: TNode }[] = []
+    const collect = (n: TNode) => {
+      n.children.forEach((c) => { result.push({ from: n, to: c }); collect(c) })
+    }
+    collect(root)
+    return result
+  }, [root.id])
 
-  // wheel zoom
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault()
     const factor = e.deltaY > 0 ? 1.12 : 0.88
@@ -191,6 +187,7 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
+        aria-label="招待ネットワーク図"
       >
         {/* Edges */}
         {edges.map((e, i) => {
@@ -220,40 +217,32 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
               key={n.id}
               onClick={() => setSel(isSel ? null : n)}
               style={{ cursor: 'pointer' }}
+              role="button"
+              aria-label={`${n.label}、レベル${n.depth}、直接招待${n.directCount}名`}
+              aria-pressed={isSel}
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setSel(isSel ? null : n)}
             >
-              {/* Glow ring when selected */}
               {isSel && (
                 <circle cx={n.x} cy={n.y} r={R + 7}
                   fill="none" stroke={c.edge} strokeWidth={2.5} strokeOpacity={0.55} />
               )}
-
-              {/* Shadow */}
               <circle cx={n.x} cy={n.y + 5} r={R}
                 fill="rgba(0,0,0,0.35)" />
-
-              {/* Main circle */}
               <circle cx={n.x} cy={n.y} r={R}
                 fill={c.mid}
                 stroke={isSel ? 'rgba(255,255,255,0.85)' : c.light}
                 strokeWidth={isSel ? 3 : 2}
                 strokeOpacity={isSel ? 1 : 0.4}
               />
-
-              {/* Highlight (shine) */}
               <ellipse cx={n.x - R * 0.28} cy={n.y - R * 0.3} rx={R * 0.45} ry={R * 0.3}
                 fill={c.light} fillOpacity={0.22} />
-
-              {/* Person — head */}
               <circle cx={n.x} cy={n.y - 11} r={10}
                 fill="rgba(255,255,255,0.92)" />
-
-              {/* Person — body */}
               <path
                 d={`M${n.x - 17},${n.y + 20} Q${n.x - 17},${n.y + 4} ${n.x},${n.y + 4} Q${n.x + 17},${n.y + 4} ${n.x + 17},${n.y + 20}`}
                 fill="rgba(255,255,255,0.92)"
               />
-
-              {/* YOU badge */}
               {n.isRoot && (
                 <g>
                   <rect x={n.x - 18} y={n.y - R - 22} width={36} height={16} rx={8}
@@ -265,17 +254,13 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
                   </text>
                 </g>
               )}
-
-              {/* Name */}
               <text
                 x={n.x} y={n.y + R + 20}
                 textAnchor="middle" fontSize={13} fontWeight="700"
-                fill="white" fontFamily="system-ui, -apple-system, sans-serif"
+                fill="#F0EDE8" fontFamily="system-ui, -apple-system, sans-serif"
               >
                 {lbl}
               </text>
-
-              {/* Level + invite count */}
               <text
                 x={n.x} y={n.y + R + 37}
                 textAnchor="middle" fontSize={10} fill={c.light}
@@ -291,15 +276,15 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
       {/* Stats */}
       <div style={{
         position: 'absolute', left: 16, top: 16, zIndex: 10,
-        background: 'rgba(10,12,24,0.95)', backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16,
+        background: 'rgba(5,6,15,0.95)', backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(212,168,67,0.10)', borderRadius: 16,
         padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: '#4b5563', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Network</div>
-        {([['総メンバー', total, '#f8fafc'], ['直接招待', direct, '#4ade80'], ['最大深度', `L${maxDepth}`, '#c084fc']] as [string, string|number, string][]).map(([l, v, c]) => (
+        <div style={{ fontSize: 9, fontWeight: 700, color: '#5A5650', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Network</div>
+        {([['総メンバー', total, '#F0EDE8'], ['直接招待', direct, '#4EC9C9'], ['最大深度', `L${maxDepth}`, '#D4A843']] as [string, string|number, string][]).map(([l, v, c]) => (
           <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 32 }}>
-            <span style={{ fontSize: 11, color: '#6b7280' }}>{l}</span>
+            <span style={{ fontSize: 11, color: '#9A9590' }}>{l}</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: c }}>{v}</span>
           </div>
         ))}
@@ -310,7 +295,7 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
         <div style={{
           position: 'absolute', right: 16, top: 16, zIndex: 10,
           width: 240, borderRadius: 20, overflow: 'hidden',
-          background: 'rgba(10,12,24,0.97)', backdropFilter: 'blur(24px)',
+          background: 'rgba(5,6,15,0.97)', backdropFilter: 'blur(24px)',
           border: `1px solid ${col(sel.branchIndex).edge}55`,
           boxShadow: `0 0 40px ${col(sel.branchIndex).mid}22, 0 10px 40px rgba(0,0,0,0.7)`,
         }}>
@@ -330,11 +315,11 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
               </div>
-              <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#F0EDE8', fontWeight: 600, fontSize: 14, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {sel.label}
               </span>
             </div>
-            <button onClick={() => setSel(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }}>
+            <button onClick={() => setSel(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5A5650', padding: 4 }}>
               <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -348,7 +333,7 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
               ...(sel.directCount > 0 ? [['直接招待', `${sel.directCount}名`]] : []),
             ] as [string, string][]).map(([lbl, val]) => (
               <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <span style={{ color: '#6b7280', fontSize: 12, flexShrink: 0 }}>{lbl}</span>
+                <span style={{ color: '#9A9590', fontSize: 12, flexShrink: 0 }}>{lbl}</span>
                 <span style={{ color: col(sel.branchIndex).light, fontSize: 12, fontWeight: 500, textAlign: 'right', wordBreak: 'break-all' }}>{val}</span>
               </div>
             ))}
@@ -358,7 +343,7 @@ function OrgChart({ root, total }: { root: TNode; total: number }) {
 
       {/* Hint */}
       <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>
+        <span style={{ fontSize: 10, color: 'rgba(240,237,232,0.2)', letterSpacing: '0.06em' }}>
           ドラッグで移動　/　スクロールで拡大縮小
         </span>
       </div>
@@ -382,7 +367,7 @@ function ListView({ root }: { root: TNode }) {
           <div key={depth} style={{ borderRadius: 16, border: `1px solid ${c.edge}40`, background: c.dark, overflow: 'hidden' }}>
             <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${c.edge}30` }}>
               <span style={{ background: c.mid, color: '#fff', fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>L{depth}</span>
-              <span style={{ color: '#fff', fontSize: 14, fontWeight: 500 }}>{members.length}名</span>
+              <span style={{ color: '#F0EDE8', fontSize: 14, fontWeight: 500 }}>{members.length}名</span>
             </div>
             {members.map((m) => (
               <div key={m.id} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -393,11 +378,11 @@ function ListView({ root }: { root: TNode }) {
                   </svg>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#fff', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.label}</div>
+                  <div style={{ color: '#F0EDE8', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.label}</div>
                   <div style={{ color: c.light, fontSize: 10, fontFamily: 'monospace', marginTop: 2 }}>{m.referralCode}</div>
                 </div>
                 {m.joinedAt && (
-                  <div style={{ color: '#6b7280', fontSize: 10, flexShrink: 0 }}>
+                  <div style={{ color: '#5A5650', fontSize: 10, flexShrink: 0 }}>
                     {new Date(m.joinedAt).toLocaleDateString('ja-JP')}
                   </div>
                 )}
@@ -414,11 +399,11 @@ function ListView({ root }: { root: TNode }) {
 
 function Loading() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#080c18' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#05060f' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, margin: '0 auto 16px', borderRadius: '50%', border: '3px solid rgba(37,99,235,0.3)', borderTopColor: '#3b82f6', animation: 'spin 1s linear infinite' }} />
+        <div style={{ width: 56, height: 56, margin: '0 auto 16px', borderRadius: '50%', border: '3px solid rgba(212,168,67,0.15)', borderTopColor: '#D4A843', animation: 'spin 1s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        <div style={{ color: '#6b7280', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Loading...</div>
+        <div style={{ color: '#5A5650', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     </div>
   )
@@ -462,26 +447,26 @@ function TreeView() {
   if (loading) return <Loading />
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#080c18' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#05060f' }}>
       {/* Header */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,12,24,0.98)' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(212,168,67,0.08)', background: 'rgba(5,6,15,0.98)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/partner" style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.07)', color: '#6b7280', textDecoration: 'none' }}>
+          <a href="/partner" style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(212,168,67,0.10)', color: '#5A5650', textDecoration: 'none' }}>
             <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </a>
           <div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>招待ネットワーク</div>
-            <div style={{ color: '#4b5563', fontSize: 10, marginTop: 3, letterSpacing: '0.08em' }}>INVITE NETWORK</div>
+            <div style={{ color: '#F0EDE8', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>招待ネットワーク</div>
+            <div style={{ color: '#5A5650', fontSize: 10, marginTop: 3, letterSpacing: '0.08em' }}>INVITE NETWORK</div>
           </div>
         </div>
-        <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.10)' }}>
           {(['graph', 'list'] as const).map((m) => (
             <button key={m} onClick={() => setView(m)} style={{
               padding: '6px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none',
-              background: view === m ? '#7c3aed' : 'rgba(255,255,255,0.03)',
-              color: view === m ? '#fff' : '#6b7280',
+              background: view === m ? '#D4A843' : 'rgba(212,168,67,0.03)',
+              color: view === m ? '#05060f' : '#5A5650',
             }}>
               {m === 'graph' ? 'グラフ' : 'リスト'}
             </button>
@@ -500,10 +485,10 @@ function TreeView() {
               </svg>
             </div>
             <div>
-              <p style={{ color: '#d1d5db', fontWeight: 600, marginBottom: 6 }}>まだ招待したユーザーがいません</p>
-              <p style={{ color: '#6b7280', fontSize: 14 }}>招待リンクを共有してネットワークを広げましょう</p>
+              <p style={{ color: '#F0EDE8', fontWeight: 600, marginBottom: 6 }}>まだ招待したユーザーがいません</p>
+              <p style={{ color: '#9A9590', fontSize: 14 }}>招待リンクを共有してネットワークを広げましょう</p>
             </div>
-            <a href="/partner" style={{ background: '#7c3aed', color: '#fff', padding: '10px 24px', borderRadius: 12, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
+            <a href="/partner" style={{ background: '#D4A843', color: '#05060f', padding: '10px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
               ダッシュボードへ
             </a>
           </div>

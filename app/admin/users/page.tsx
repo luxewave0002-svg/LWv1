@@ -68,8 +68,8 @@ export default function AdminUsersPage() {
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">ユーザー管理</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-display font-light text-lw-text-primary">ユーザー管理</h1>
+          <p className="text-lw-text-tertiary text-sm mt-1">
             全 {users.length} 名（管理者 {adminCount} 名）
           </p>
         </div>
@@ -82,17 +82,17 @@ export default function AdminUsersPage() {
           placeholder="名前またはメールで検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 bg-[#1a1a2e] border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
+          className="flex-1 bg-lw-surface border border-lw-gold/15 rounded-xl px-4 py-2.5 text-lw-text-primary placeholder:text-lw-text-tertiary focus:outline-none focus:border-lw-gold-muted transition-colors"
         />
-        <div className="flex bg-[#1a1a2e] border border-white/20 rounded-xl overflow-hidden">
+        <div className="flex bg-lw-surface border border-lw-gold/15 rounded-xl overflow-hidden">
           {(['all', 'user', 'admin'] as const).map((r) => (
             <button
               key={r}
               onClick={() => setRoleFilter(r)}
               className={`px-4 py-2.5 text-sm transition-colors ${
                 roleFilter === r
-                  ? 'bg-violet-600 text-white'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'bg-lw-gold text-lw-void font-medium'
+                  : 'text-lw-text-secondary hover:text-lw-text-primary'
               }`}
             >
               {r === 'all' ? 'すべて' : r === 'admin' ? '管理者' : '一般'}
@@ -102,10 +102,10 @@ export default function AdminUsersPage() {
       </div>
 
       {/* テーブル */}
-      <div className="bg-[#1a1a2e] rounded-2xl border border-white/10 overflow-hidden">
+      <div className="bg-lw-surface rounded-2xl border border-lw-gold/10 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="border-b border-white/10 bg-white/5">
-            <tr className="text-gray-400">
+          <thead className="border-b border-lw-gold/10 bg-lw-raised/50">
+            <tr className="text-lw-text-secondary">
               <th className="text-left px-4 py-3 font-medium">名前</th>
               <th className="text-left px-4 py-3 font-medium">メール</th>
               <th className="text-left px-4 py-3 font-medium">ロール</th>
@@ -117,45 +117,45 @@ export default function AdminUsersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-gray-500">読み込み中...</td>
+                <td colSpan={6} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-gray-500">
+                <td colSpan={6} className="text-center py-12 text-lw-text-tertiary">
                   {search || roleFilter !== 'all' ? '条件に一致するユーザーがいません' : 'ユーザーがいません'}
                 </td>
               </tr>
             ) : (
               filtered.map((u) => (
-                <tr key={u.id} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+                <tr key={u.id} className="border-b border-lw-gold/5 hover:bg-lw-gold/[0.03] transition-colors">
                   <td className="px-4 py-3">
-                    <div className="text-white font-medium">{u.name ?? <span className="text-gray-500">未設定</span>}</div>
-                    <div className="text-gray-500 text-xs font-mono">{u.referralCode}</div>
+                    <div className="text-lw-text-primary font-medium">{u.name ?? <span className="text-lw-text-tertiary">未設定</span>}</div>
+                    <div className="text-lw-text-tertiary text-xs font-mono">{u.referralCode}</div>
                   </td>
-                  <td className="px-4 py-3 text-gray-300">{u.email}</td>
+                  <td className="px-4 py-3 text-lw-text-secondary">{u.email}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
                         u.role === 'admin'
                           ? 'bg-red-900/30 text-red-400 border-red-800'
-                          : 'bg-gray-900/50 text-gray-400 border-gray-700'
+                          : 'bg-lw-raised text-lw-text-tertiary border-lw-gold/10'
                       }`}
                     >
                       {u.role === 'admin' ? '管理者' : '一般'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    <span className="text-violet-400">{u._count.referrals}</span> 招待 /{' '}
-                    <span className="text-emerald-400">{u._count.purchases}</span> 購入
+                  <td className="px-4 py-3 text-lw-text-secondary">
+                    <span className="text-lw-gold">{u._count.referrals}</span> 招待 /{' '}
+                    <span className="text-lw-teal">{u._count.purchases}</span> 購入
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
+                  <td className="px-4 py-3 text-lw-text-secondary text-xs">
                     {new Date(u.createdAt).toLocaleDateString('ja-JP')}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <a
                         href={`/tree?userId=${u.id}`}
-                        className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                        className="text-xs text-lw-gold hover:text-lw-gold-mid transition-colors"
                       >
                         ツリー
                       </a>
@@ -163,7 +163,7 @@ export default function AdminUsersPage() {
                         onClick={() => toggleRole(u)}
                         className={`text-xs transition-colors ${
                           u.role === 'admin'
-                            ? 'text-gray-400 hover:text-white'
+                            ? 'text-lw-text-secondary hover:text-lw-text-primary'
                             : 'text-yellow-400 hover:text-yellow-300'
                         }`}
                       >
@@ -187,11 +187,11 @@ export default function AdminUsersPage() {
       {/* 削除確認モーダル */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
-            <h2 className="text-white font-bold text-lg">ユーザーを削除しますか？</h2>
-            <div className="bg-[#0f0f1a] rounded-xl p-4 text-sm space-y-1">
-              <div className="text-white">{confirmDelete.name ?? '（名前なし）'}</div>
-              <div className="text-gray-400">{confirmDelete.email}</div>
+          <div className="bg-lw-surface border border-lw-gold/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h2 className="text-lw-text-primary font-bold text-lg">ユーザーを削除しますか？</h2>
+            <div className="bg-lw-raised rounded-xl p-4 text-sm space-y-1">
+              <div className="text-lw-text-primary">{confirmDelete.name ?? '（名前なし）'}</div>
+              <div className="text-lw-text-secondary">{confirmDelete.email}</div>
             </div>
             <p className="text-red-400 text-sm">
               この操作は取り消せません。関連する招待ログ・購入記録も削除されます。
@@ -199,7 +199,7 @@ export default function AdminUsersPage() {
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 py-2 rounded-lg border border-white/20 text-gray-300 hover:bg-white/10 transition-colors text-sm"
+                className="flex-1 py-2 rounded-lg border border-lw-gold/15 text-lw-text-secondary hover:border-lw-gold/30 hover:text-lw-text-primary transition-colors text-sm"
               >
                 キャンセル
               </button>

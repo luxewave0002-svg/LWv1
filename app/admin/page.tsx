@@ -57,13 +57,13 @@ export default async function AdminDashboard() {
 
   return (
     <div className="p-8 space-y-8">
-      <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
+      <h1 className="text-2xl font-display font-light text-lw-text-primary">ダッシュボード</h1>
 
       {/* KPIカード */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: '総ユーザー数', value: kpis.totalUsers.toLocaleString(), color: 'text-violet-400' },
-          { label: '今月の新規', value: `+${kpis.newUsersThisMonth}`, color: 'text-emerald-400' },
+          { label: '総ユーザー数', value: kpis.totalUsers.toLocaleString(), color: 'text-lw-gold' },
+          { label: '今月の新規', value: `+${kpis.newUsersThisMonth}`, color: 'text-lw-teal' },
           { label: '累計売上', value: `¥${kpis.totalRevenue.toLocaleString()}`, color: 'text-yellow-400' },
           {
             label: '今月の売上',
@@ -72,9 +72,9 @@ export default async function AdminDashboard() {
             badge: kpis.pendingPartners > 0 ? `承認待 ${kpis.pendingPartners}件` : null,
           },
         ].map((card) => (
-          <div key={card.label} className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-            <div className="text-gray-400 text-sm mb-1">{card.label}</div>
-            <div className={`text-3xl font-bold ${card.color}`}>{card.value}</div>
+          <div key={card.label} className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
+            <div className="text-lw-text-secondary text-xs mb-2 tracking-[0.06em] uppercase">{card.label}</div>
+            <div className={`text-3xl font-display font-light ${card.color}`}>{card.value}</div>
           </div>
         ))}
       </div>
@@ -90,16 +90,16 @@ export default async function AdminDashboard() {
 
       <div className="grid grid-cols-2 gap-6">
         {/* 最近の登録 */}
-        <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-          <h2 className="text-gray-300 font-semibold mb-4">最近の登録ユーザー</h2>
+        <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
+          <h2 className="text-lw-text-secondary text-xs font-medium mb-4 tracking-[0.06em] uppercase">最近の登録ユーザー</h2>
           <div className="space-y-3">
             {kpis.recentUsers.map((u) => (
               <div key={u.id} className="flex justify-between text-sm">
                 <div>
-                  <div className="text-white">{u.name ?? '—'}</div>
-                  <div className="text-gray-500 text-xs">{u.email}</div>
+                  <div className="text-lw-text-primary">{u.name ?? '—'}</div>
+                  <div className="text-lw-text-tertiary text-xs">{u.email}</div>
                 </div>
-                <div className="text-gray-500 text-xs">
+                <div className="text-lw-text-tertiary text-xs">
                   {new Date(u.createdAt).toLocaleDateString('ja-JP')}
                 </div>
               </div>
@@ -108,25 +108,25 @@ export default async function AdminDashboard() {
         </div>
 
         {/* 最近の決済 */}
-        <div className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-          <h2 className="text-gray-300 font-semibold mb-4">最近の決済</h2>
+        <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
+          <h2 className="text-lw-text-secondary text-xs font-medium mb-4 tracking-[0.06em] uppercase">最近の決済</h2>
           <div className="space-y-3">
             {kpis.recentPurchases.map((p) => (
               <div key={p.id} className="flex justify-between text-sm">
                 <div>
-                  <div className="text-white">{p.user.name ?? '—'}</div>
-                  <div className="text-gray-500 text-xs">{p.plan.name}</div>
+                  <div className="text-lw-text-primary">{p.user.name ?? '—'}</div>
+                  <div className="text-lw-text-tertiary text-xs">{p.plan.name}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-emerald-400">¥{p.amountJpy.toLocaleString()}</div>
-                  <div className="text-gray-500 text-xs">
+                  <div className="text-lw-teal">¥{p.amountJpy.toLocaleString()}</div>
+                  <div className="text-lw-text-tertiary text-xs">
                     {p.paidAt ? new Date(p.paidAt).toLocaleDateString('ja-JP') : '—'}
                   </div>
                 </div>
               </div>
             ))}
             {kpis.recentPurchases.length === 0 && (
-              <p className="text-gray-500 text-sm">まだ決済がありません</p>
+              <p className="text-lw-text-tertiary text-sm">まだ決済がありません</p>
             )}
           </div>
         </div>

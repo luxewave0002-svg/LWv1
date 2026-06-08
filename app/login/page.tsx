@@ -19,7 +19,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
-  // URL params: ?invite=CODE or ?tab=register
   useEffect(() => {
     const code = searchParams.get('invite') ?? searchParams.get('ref') ?? ''
     if (code) {
@@ -80,15 +79,27 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f0f1a]">
-      <div className="w-full max-w-md bg-[#1a1a2e] rounded-2xl p-8 shadow-2xl border border-white/10">
-        <div className="flex mb-8 bg-[#0f0f1a] rounded-xl p-1">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-lw-void">
+      {/* Wordmark */}
+      <div className="mb-8 text-center">
+        <span className="font-display font-medium tracking-[0.25em] text-xl uppercase select-none">
+          <span className="text-lw-gold">LUXE</span>
+          <span className="ml-2 text-lw-text-primary">WAVE</span>
+        </span>
+        <div className="mt-2 h-px w-24 mx-auto bg-lw-gold/30" />
+      </div>
+
+      <div className="w-full max-w-md bg-lw-surface rounded-2xl p-8 shadow-2xl border border-lw-gold/10">
+        {/* Tab switcher */}
+        <div className="flex mb-8 border-b border-lw-gold/10">
           {(['login', 'register'] as const).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setError('') }}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                tab === t ? 'bg-violet-600 text-white' : 'text-gray-400 hover:text-white'
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                tab === t
+                  ? 'border-lw-gold text-lw-text-primary'
+                  : 'border-transparent text-lw-text-tertiary hover:text-lw-text-secondary'
               }`}
             >
               {t === 'login' ? 'ログイン' : '新規登録'}
@@ -99,68 +110,68 @@ function LoginForm() {
         {tab === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">メールアドレス</label>
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">メールアドレス</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">パスワード</label>
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">パスワード</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors" />
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button type="submit" disabled={loading}
-              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+              className="w-full bg-lw-gold hover:bg-lw-gold-mid disabled:opacity-50 text-lw-void font-semibold py-2.5 rounded-lg transition-colors">
               {loading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">お名前</label>
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">お名前</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">メールアドレス</label>
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">メールアドレス</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">パスワード（8文字以上）</label>
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">パスワード（8文字以上）</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">パスワード確認</label>
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">パスワード確認</label>
               <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required
-                className="w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" />
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">
+              <label className="block text-xs text-lw-text-tertiary mb-1.5 tracking-[0.08em] uppercase">
                 招待コード <span className="text-red-400">*</span>
-                {inviteCode && <span className="ml-2 text-xs text-violet-400">（自動入力済み）</span>}
+                {inviteCode && <span className="ml-2 normal-case text-lw-gold text-xs">（自動入力済み）</span>}
               </label>
               <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
                 placeholder="招待コードを入力してください"
                 required
-                className={`w-full bg-[#0f0f1a] border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500 ${
-                  inviteCode ? 'border-violet-500/60' : 'border-white/20'
+                className={`w-full bg-lw-raised border rounded-lg px-4 py-2.5 text-lw-text-primary focus:outline-none focus:border-lw-gold-muted transition-colors ${
+                  inviteCode ? 'border-lw-gold/60' : 'border-lw-gold/15'
                 }`} />
-              <p className="text-xs text-gray-500 mt-1">招待コードをお持ちでない方は登録できません</p>
+              <p className="text-xs text-lw-text-tertiary mt-1">招待コードをお持ちでない方は登録できません</p>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button type="submit" disabled={loading}
-              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors">
+              className="w-full bg-lw-gold hover:bg-lw-gold-mid disabled:opacity-50 text-lw-void font-semibold py-2.5 rounded-lg transition-colors">
               {loading ? '登録中...' : 'アカウントを作成'}
             </button>
           </form>
         )}
 
         <div className="flex items-center my-6">
-          <div className="flex-1 border-t border-white/10" />
-          <span className="px-4 text-sm text-gray-500">または</span>
-          <div className="flex-1 border-t border-white/10" />
+          <div className="flex-1 border-t border-lw-gold/10" />
+          <span className="px-4 text-sm text-lw-text-tertiary">または</span>
+          <div className="flex-1 border-t border-lw-gold/10" />
         </div>
 
         <button
