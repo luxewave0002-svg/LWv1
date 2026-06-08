@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { LogoutButton } from './logout-button'
@@ -14,10 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* サイドバー */}
       <aside className="w-56 bg-lw-void border-r border-lw-gold/10 flex flex-col py-6">
         <div className="px-5 mb-8">
-          <span className="font-display font-medium tracking-[0.2em] text-base uppercase select-none">
-            <span className="text-lw-gold">LUXE</span>
-            <span className="ml-1.5 text-lw-text-primary">WAVE</span>
-          </span>
+          <Image src="/logo.png" alt="LUXE WAVE" width={128} height={32} className="h-8 w-auto select-none" />
           <p className="text-lw-text-tertiary text-[10px] tracking-[0.1em] mt-1 uppercase">管理者パネル</p>
         </div>
         <nav className="flex-1 px-3 space-y-1">

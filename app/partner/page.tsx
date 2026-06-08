@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
+import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -253,10 +254,7 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <span className="font-display font-medium tracking-[0.2em] text-xl uppercase select-none">
-              <span className="text-lw-gold">LUXE</span>
-              <span className="ml-2 text-lw-text-primary">WAVE</span>
-            </span>
+            <Image src="/logo.png" alt="LUXE WAVE" width={128} height={32} className="h-8 w-auto select-none" />
             <p className="text-lw-text-tertiary text-xs tracking-[0.08em] mt-1">パートナーダッシュボード</p>
           </div>
           <div className="flex items-center gap-3">
@@ -413,10 +411,7 @@ export default function PartnerPage() {
       <div className="md:hidden min-h-screen bg-lw-deep text-lw-text-primary overflow-y-auto">
         {/* モバイルヘッダー */}
         <header className="sticky top-0 z-10 bg-lw-deep/95 backdrop-blur border-b border-lw-gold/10 px-4 py-3 flex items-center justify-between">
-          <span className="font-display font-medium tracking-[0.2em] text-base uppercase select-none">
-            <span className="text-lw-gold">LUXE</span>
-            <span className="ml-1.5 text-lw-text-primary">WAVE</span>
-          </span>
+          <Image src="/logo.png" alt="LUXE WAVE" width={128} height={32} className="h-8 w-auto select-none" />
           <span className="text-lw-text-tertiary text-xs">{session?.user?.name ?? session?.user?.email}</span>
         </header>
 

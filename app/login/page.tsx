@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
+import Image from 'next/image'
 import { signIn } from 'next-auth/react'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -82,10 +83,7 @@ function LoginForm() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-lw-void">
       {/* Wordmark */}
       <div className="mb-8 text-center">
-        <span className="font-display font-medium tracking-[0.25em] text-xl uppercase select-none">
-          <span className="text-lw-gold">LUXE</span>
-          <span className="ml-2 text-lw-text-primary">WAVE</span>
-        </span>
+        <Image src="/logo.png" alt="LUXE WAVE" width={192} height={48} className="h-12 w-auto mx-auto select-none" />
         <div className="mt-2 h-px w-24 mx-auto bg-lw-gold/30" />
       </div>
 
