@@ -5,6 +5,9 @@
 -- 適用方法（どちらか）:
 --   1) psql "$DATABASE_URL" -f prisma/sql/20260902_add_referral_points.sql
 --   2) npm run db:push   （schema.prisma から同じ形が作られる）
+--
+-- 【適用済み】2026-09-04、Supabase プロジェクト luxewave0002
+-- （zihodrbmnxdjtppntrnz / ap-northeast-1）に migration 名 add_referral_points で適用。
 
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "points" INTEGER NOT NULL DEFAULT 0;
 
@@ -48,3 +51,8 @@ BEGIN
     END IF;
 END
 $$;
+
+-- 既存テーブル（users/purchases など）と姿勢を揃える。
+-- アプリは Prisma がテーブル所有者ロールで接続するので RLS を迂回でき、
+-- anon / authenticated ロールからは台帳を読めない状態になる。
+ALTER TABLE "point_transactions" ENABLE ROW LEVEL SECURITY;
