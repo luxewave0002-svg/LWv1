@@ -6,7 +6,12 @@ import { LogoutButton } from './logout-button'
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
 
-  if (!session?.user || session.user.role !== 'admin') {
+  // 未ログインはログイン画面へ（認証後 /admin に戻れるよう next を渡す）。
+  // ログイン済みで権限が無い場合だけ /partner に戻し、管理画面の存在を匂わせない。
+  if (!session?.user) {
+    redirect('/login?next=/admin')
+  }
+  if (session.user.role !== 'admin') {
     redirect('/partner')
   }
 

@@ -7,9 +7,16 @@ import { signIn } from 'next-auth/react'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+// ログイン後の遷移先。外部サイトへ飛ばされないよう、自サイト内の絶対パスのみ許可する。
+function safeNext(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/partner'
+  return raw
+}
+
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const nextPath = safeNext(searchParams.get('next'))
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,7 +44,7 @@ function LoginForm() {
     if (res?.error) {
       setError('メールアドレスまたはパスワードが正しくありません')
     } else {
-      router.push('/partner')
+      router.push(nextPath)
     }
     setLoading(false)
   }
@@ -76,8 +83,10 @@ function LoginForm() {
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true)
-    await signIn('google', { callbackUrl: '/partner' })
+    await signIn('google', { callbackUrl: nextPath })
   }
+
+  const adminMode = nextPath === '/admin'
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-lw-void">
@@ -88,6 +97,13 @@ function LoginForm() {
       </div>
 
       <div className="w-full max-w-md bg-lw-surface rounded-2xl p-8 shadow-2xl border border-lw-gold/10">
+        {adminMode && (
+          <div className="mb-6 rounded-lg bg-lw-raised border border-lw-gold/20 px-4 py-2.5 text-center">
+            <p className="text-xs text-lw-gold tracking-[0.06em]">管理者ページへログイン</p>
+            <p className="text-[10px] text-lw-text-tertiary mt-0.5">認証後 /admin へ移動します</p>
+          </div>
+        )}
+
         {/* Tab switcher */}
         <div className="flex mb-8 border-b border-lw-gold/10">
           {(['login', 'register'] as const).map((t) => (
@@ -185,6 +201,16 @@ function LoginForm() {
           </svg>
           {googleLoading ? '処理中...' : 'Google でログイン / 登録'}
         </button>
+
+        <div className="mt-6 pt-5 border-t border-lw-gold/10 text-center">
+          <a
+            href="/admin"
+            className="inline-flex items-center gap-1.5 text-xs text-lw-text-tertiary hover:text-lw-gold transition-colors"
+          >
+            管理者ページ
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </div>
     </div>
   )
