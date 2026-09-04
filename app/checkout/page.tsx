@@ -99,7 +99,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-display font-light text-lw-gold">
+                  <div className="text-3xl font-sans font-light tracking-tight text-lw-gold">
                     ¥{plan.priceJpy.toLocaleString()}
                   </div>
                   {selectedPlan?.id === plan.id && (
@@ -120,7 +120,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between mb-6">
               <span className="text-lw-text-secondary">金額</span>
-              <span className="text-lw-gold font-display font-light text-2xl">
+              <span className="text-lw-gold font-sans font-light tracking-tight text-2xl">
                 ¥{selectedPlan.priceJpy.toLocaleString()}
               </span>
             </div>

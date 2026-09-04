@@ -70,8 +70,8 @@ function PointsCard({ points }: { points: number }) {
     <div className="bg-gradient-to-r from-lw-gold/10 to-lw-teal/10 border border-lw-gold/20 rounded-2xl p-5">
       <p className="text-lw-text-tertiary text-[9px] uppercase tracking-[0.18em]">保有ポイント</p>
       <div className="flex items-baseline gap-1.5 mt-1.5">
-        <span className="text-5xl font-display font-light text-lw-gold leading-none">{points}</span>
-        <span className="text-lw-gold/70 text-lg font-display leading-none">pt</span>
+        <span className="text-5xl font-sans font-light tracking-tight text-lw-gold leading-none">{points}</span>
+        <span className="text-lw-gold/70 text-lg font-sans font-light leading-none">pt</span>
       </div>
       <div className="w-8 h-px bg-lw-gold/25 my-2.5" />
       <p className="text-lw-text-tertiary text-[10px]">紹介した方の登録・プラン加入で貯まります</p>
@@ -139,13 +139,13 @@ function MobileHome({ stats, session, qrDataUrl }: { stats: Stats; session: any;
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10 text-center">
           <p className="text-lw-text-tertiary text-[9px] uppercase tracking-[0.18em] mb-1">直接</p>
-          <div className="text-5xl font-display font-light text-lw-gold leading-none">{stats.directCount}</div>
+          <div className="text-5xl font-sans font-light tracking-tight text-lw-gold leading-none">{stats.directCount}</div>
           <div className="w-8 h-px bg-lw-gold/25 mx-auto my-2" />
           <div className="text-lw-text-tertiary text-[10px]">名を招待</div>
         </div>
         <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10 text-center">
           <p className="text-lw-text-tertiary text-[9px] uppercase tracking-[0.18em] mb-1">総計</p>
-          <div className="text-5xl font-display font-light text-lw-teal leading-none">{stats.totalCount}</div>
+          <div className="text-5xl font-sans font-light tracking-tight text-lw-teal leading-none">{stats.totalCount}</div>
           <div className="w-8 h-px bg-lw-teal/25 mx-auto my-2" />
           <div className="text-lw-text-tertiary text-[10px]">名のメンバー</div>
         </div>
@@ -382,13 +382,13 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-lw-surface rounded-2xl p-6 border border-lw-gold/10 text-center">
             <p className="text-lw-text-tertiary text-[9px] uppercase tracking-[0.18em] mb-2">直接招待</p>
-            <div className="text-5xl font-display font-light text-lw-gold leading-none">{stats.directCount}</div>
+            <div className="text-5xl font-sans font-light tracking-tight text-lw-gold leading-none">{stats.directCount}</div>
             <div className="w-8 h-px bg-lw-gold/25 mx-auto my-2" />
             <div className="text-lw-text-tertiary text-xs">名を招待</div>
           </div>
           <div className="bg-lw-surface rounded-2xl p-6 border border-lw-gold/10 text-center">
             <p className="text-lw-text-tertiary text-[9px] uppercase tracking-[0.18em] mb-2">総配下人数</p>
-            <div className="text-5xl font-display font-light text-lw-teal leading-none">{stats.totalCount}</div>
+            <div className="text-5xl font-sans font-light tracking-tight text-lw-teal leading-none">{stats.totalCount}</div>
             <div className="w-8 h-px bg-lw-teal/25 mx-auto my-2" />
             <div className="text-lw-text-tertiary text-xs">名のメンバー</div>
           </div>
