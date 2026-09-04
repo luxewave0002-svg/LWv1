@@ -15,11 +15,23 @@ type Referral = {
   createdAt: string
 }
 
+type PointEntry = {
+  id: string
+  amount: number
+  type: string
+  description: string | null
+  createdAt: string
+  sourceUser: { id: string; name: string | null } | null
+}
+
 type Stats = {
   directCount: number
   totalCount: number
   referrals: Referral[]
   referralCode: string
+  // マイグレーション前のレスポンスや古いキャッシュでも壊れないよう任意扱いにする
+  points?: number
+  pointHistory?: PointEntry[]
 }
 
 // ─── Icons ────────────────────────────────────────────────
@@ -49,6 +61,58 @@ function IconMenu({ active }: { active: boolean }) {
     <svg className={`w-6 h-6 ${active ? 'text-lw-gold' : 'text-lw-text-tertiary'}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
     </svg>
+  )
+}
+
+// ─── Points ───────────────────────────────────────────────
+function PointsCard({ points }: { points: number }) {
+  return (
+    <div className="bg-gradient-to-r from-lw-gold/10 to-lw-teal/10 border border-lw-gold/20 rounded-2xl p-5">
+      <p className="text-lw-text-tertiary text-[9px] uppercase tracking-[0.18em]">保有ポイント</p>
+      <div className="flex items-baseline gap-1.5 mt-1.5">
+        <span className="text-5xl font-display font-light text-lw-gold leading-none">{points}</span>
+        <span className="text-lw-gold/70 text-lg font-display leading-none">pt</span>
+      </div>
+      <div className="w-8 h-px bg-lw-gold/25 my-2.5" />
+      <p className="text-lw-text-tertiary text-[10px]">紹介した方の登録・プラン加入で貯まります</p>
+    </div>
+  )
+}
+
+function pointLabel(entry: PointEntry) {
+  const who = entry.sourceUser?.name ?? 'メンバー'
+  if (entry.type === 'referral_signup') return `${who} さんが登録`
+  if (entry.type === 'referral_purchase') return `${who} さんが有料プランに加入`
+  return entry.description ?? 'ポイント付与'
+}
+
+function PointHistoryCard({ history }: { history: PointEntry[] }) {
+  return (
+    <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
+      <h2 className="text-lw-text-primary text-sm font-medium mb-3">
+        ポイント履歴{' '}
+        <span className="text-lw-text-tertiary font-normal">({history.length}件)</span>
+      </h2>
+      {history.length === 0 ? (
+        <p className="text-lw-text-tertiary text-sm">まだポイントの獲得はありません</p>
+      ) : (
+        <div className="space-y-3">
+          {history.map((e) => (
+            <div key={e.id} className="flex items-center justify-between py-1 border-b border-lw-gold/5 last:border-0">
+              <div className="min-w-0 pr-3">
+                <div className="text-lw-text-primary text-sm font-medium truncate">{pointLabel(e)}</div>
+                <div className="text-lw-text-tertiary text-xs">
+                  {new Date(e.createdAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+              <span className="flex-shrink-0 bg-lw-gold-muted/30 text-lw-gold text-xs px-2.5 py-1 rounded-full border border-lw-gold-muted font-medium">
+                +{e.amount}pt
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -87,6 +151,9 @@ function MobileHome({ stats, session, qrDataUrl }: { stats: Stats; session: any;
         </div>
       </div>
 
+      {/* Points */}
+      <PointsCard points={stats.points ?? 0} />
+
       {/* Quick invite */}
       <div className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10 space-y-3">
         <div className="flex items-center justify-between">
@@ -123,6 +190,9 @@ function MobileHome({ stats, session, qrDataUrl }: { stats: Stats; session: any;
           </div>
         </div>
       )}
+
+      {/* Point history */}
+      <PointHistoryCard history={stats.pointHistory ?? []} />
     </div>
   )
 }
@@ -324,6 +394,8 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
           </div>
         </div>
 
+        <PointsCard points={stats.points ?? 0} />
+
         <a href={`/tree?userId=${session?.user?.id}`}
           className="block bg-gradient-to-r from-lw-gold/10 to-lw-teal/10 hover:from-lw-gold/15 hover:to-lw-teal/15 border border-lw-gold/20 rounded-2xl p-5 text-center transition-all">
           <span className="text-lw-gold font-medium text-lg">招待ツリーを見る →</span>
@@ -359,6 +431,8 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
             </div>
           )}
         </div>
+
+        <PointHistoryCard history={stats.pointHistory ?? []} />
       </div>
     </div>
   )
