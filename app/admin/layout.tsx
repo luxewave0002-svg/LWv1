@@ -46,6 +46,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {session.user.name ?? session.user.email}
           </div>
           <a
+            href="/account"
+            className="block px-3 py-2 rounded-lg text-lw-text-tertiary hover:bg-lw-gold/10 hover:text-lw-text-secondary transition-colors text-sm"
+          >
+            アカウント設定
+          </a>
+          <a
             href="/partner"
             className="block px-3 py-2 rounded-lg text-lw-text-tertiary hover:bg-lw-gold/10 hover:text-lw-text-secondary transition-colors text-sm"
           >

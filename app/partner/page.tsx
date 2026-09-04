@@ -296,6 +296,10 @@ function MobileMenuTab({ session }: { session: any }) {
           <span className="text-lw-text-secondary">招待コード管理</span>
           <span className="text-lw-text-tertiary">›</span>
         </a>
+        <a href="/account" className="flex items-center justify-between w-full px-3 py-3.5 rounded-xl hover:bg-lw-gold/10 transition-colors">
+          <span className="text-lw-text-secondary">アカウント設定</span>
+          <span className="text-lw-text-tertiary">›</span>
+        </a>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="flex items-center justify-between w-full px-3 py-3.5 rounded-xl hover:bg-lw-gold/10 transition-colors"
@@ -334,6 +338,12 @@ function DesktopView({ stats, session, qrDataUrl }: { stats: Stats; session: any
                 管理者パネル
               </a>
             )}
+            <a
+              href="/account"
+              className="text-xs px-3 py-1.5 rounded-lg border border-lw-gold/10 text-lw-text-secondary hover:border-lw-gold/20 hover:text-lw-text-primary transition-colors"
+            >
+              アカウント設定
+            </a>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="text-xs px-3 py-1.5 rounded-lg border border-lw-gold/10 text-lw-text-secondary hover:border-lw-gold/20 hover:text-lw-text-primary transition-colors"
