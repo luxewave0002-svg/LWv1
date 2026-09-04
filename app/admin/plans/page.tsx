@@ -10,6 +10,7 @@ type Plan = {
   description: string | null
   priceJpy: number
   billingType: string
+  paymentUrl: string | null
   isActive: boolean
   createdAt: string
   _count: { purchases: number }
@@ -27,9 +28,10 @@ type Draft = {
   description: string
   priceJpy: string
   billingType: string
+  paymentUrl: string
 }
 
-const EMPTY_DRAFT: Draft = { name: '', description: '', priceJpy: '', billingType: 'monthly' }
+const EMPTY_DRAFT: Draft = { name: '', description: '', priceJpy: '', billingType: 'monthly', paymentUrl: '' }
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<Plan[]>([])
@@ -69,6 +71,7 @@ export default function AdminPlansPage() {
         description: draft.description,
         priceJpy: Number(draft.priceJpy),
         billingType: draft.billingType,
+        paymentUrl: draft.paymentUrl,
       }),
     })
     const data = await res.json()
@@ -148,6 +151,7 @@ export default function AdminPlansPage() {
               <th className="text-left px-4 py-3 font-medium">プラン名</th>
               <th className="text-left px-4 py-3 font-medium">金額</th>
               <th className="text-left px-4 py-3 font-medium">課金種別</th>
+              <th className="text-left px-4 py-3 font-medium">決済URL</th>
               <th className="text-left px-4 py-3 font-medium">状態</th>
               <th className="text-left px-4 py-3 font-medium">購入数</th>
               <th className="text-left px-4 py-3 font-medium">操作</th>
@@ -155,9 +159,9 @@ export default function AdminPlansPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td></tr>
             ) : plans.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-lw-text-tertiary">プランがありません</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-lw-text-tertiary">プランがありません</td></tr>
             ) : (
               plans.map((p) => (
                 <tr key={p.id} className={`border-b border-lw-gold/5 hover:bg-lw-gold/[0.03] transition-colors ${p.isActive ? '' : 'opacity-50'}`}>
@@ -167,6 +171,20 @@ export default function AdminPlansPage() {
                   </td>
                   <td className="px-4 py-3 text-lw-gold">¥{p.priceJpy.toLocaleString()}</td>
                   <td className="px-4 py-3 text-lw-text-secondary">{BILLING_LABEL[p.billingType] ?? p.billingType}</td>
+                  <td className="px-4 py-3">
+                    {p.paymentUrl ? (
+                      <a
+                        href={p.paymentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-lw-teal hover:text-lw-teal/80 transition-colors"
+                      >
+                        設定済 ↗
+                      </a>
+                    ) : (
+                      <span className="text-xs text-yellow-400">未設定</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
                       p.isActive
@@ -188,6 +206,7 @@ export default function AdminPlansPage() {
                             description: p.description ?? '',
                             priceJpy: String(p.priceJpy),
                             billingType: p.billingType,
+                            paymentUrl: p.paymentUrl ?? '',
                           })
                         }}
                         className="text-xs text-lw-gold hover:text-lw-gold-mid transition-colors"
@@ -267,6 +286,19 @@ export default function AdminPlansPage() {
                   </select>
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-lw-text-secondary mb-1.5">決済URL（UnivaPay）</label>
+              <input
+                value={draft.paymentUrl}
+                onChange={(e) => setDraft({ ...draft, paymentUrl: e.target.value })}
+                placeholder="https://checkout.univapay.com/..."
+                className="w-full bg-lw-raised border border-lw-gold/15 rounded-lg px-3 py-2.5 text-lw-text-primary placeholder:text-lw-text-tertiary focus:outline-none focus:border-lw-gold-muted transition-colors"
+              />
+              <p className="text-lw-text-tertiary text-[11px] mt-1.5">
+                未設定でも登録できます。設定すると購入画面のボタンがこのURLへ遷移します。
+              </p>
             </div>
 
             {error && <p className="text-red-400 text-sm">{error}</p>}

@@ -56,3 +56,9 @@ $$;
 -- アプリは Prisma がテーブル所有者ロールで接続するので RLS を迂回でき、
 -- anon / authenticated ロールからは台帳を読めない状態になる。
 ALTER TABLE "point_transactions" ENABLE ROW LEVEL SECURITY;
+
+-- ─────────────────────────────────────────
+-- 【追加】2026-09-05 URL決済対応：プランに決済URLを持たせる
+-- Supabase に migration 名 add_plan_payment_url で適用済み。
+-- ─────────────────────────────────────────
+ALTER TABLE "plans" ADD COLUMN IF NOT EXISTS "payment_url" TEXT;

@@ -124,6 +124,8 @@ model Plan {
   description String?
   priceJpy    Int        @map("price_jpy")
   billingType String     @map("billing_type")
+  // UnivaPay の決済URL。URL決済で運用するため、購入導線はこのURLへ送る。
+  paymentUrl  String?    @map("payment_url")
   isActive    Boolean    @default(true) @map("is_active")
   purchases   Purchase[]
   createdAt   DateTime   @default(now()) @map("created_at")

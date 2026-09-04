@@ -16,11 +16,18 @@ type PlanInput = {
   description?: unknown
   priceJpy?: unknown
   billingType?: unknown
+  paymentUrl?: unknown
 }
 
 /** 受け取った値を検証し、Prisma に渡せる形に整える */
 function parsePlan(body: PlanInput, { partial }: { partial: boolean }) {
-  const data: { name?: string; description?: string | null; priceJpy?: number; billingType?: string } = {}
+  const data: {
+    name?: string
+    description?: string | null
+    priceJpy?: number
+    billingType?: string
+    paymentUrl?: string | null
+  } = {}
 
   if (body.name !== undefined || !partial) {
     const name = typeof body.name === 'string' ? body.name.trim() : ''
@@ -47,6 +54,25 @@ function parsePlan(body: PlanInput, { partial }: { partial: boolean }) {
     data.billingType = t
   }
 
+  if (body.paymentUrl !== undefined) {
+    const url = typeof body.paymentUrl === 'string' ? body.paymentUrl.trim() : ''
+    if (url === '') {
+      data.paymentUrl = null
+    } else {
+      // 決済ページへ利用者を送るので、http(s) 以外のスキームは受け付けない
+      let parsed: URL
+      try {
+        parsed = new URL(url)
+      } catch {
+        return { error: '決済URLの形式が正しくありません' }
+      }
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return { error: '決済URLは http:// または https:// で始めてください' }
+      }
+      data.paymentUrl = parsed.toString()
+    }
+  }
+
   return { data }
 }
 
@@ -62,6 +88,7 @@ export async function GET() {
       description: true,
       priceJpy: true,
       billingType: true,
+      paymentUrl: true,
       isActive: true,
       createdAt: true,
       _count: { select: { purchases: true } },
@@ -83,6 +110,7 @@ export async function POST(request: NextRequest) {
       description: parsed.data!.description ?? null,
       priceJpy: parsed.data!.priceJpy!,
       billingType: parsed.data!.billingType!,
+      paymentUrl: parsed.data!.paymentUrl ?? null,
       isActive: body.isActive !== false,
     },
   })

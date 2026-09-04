@@ -273,3 +273,45 @@ export async function backfillReferralPoints(
   summary.totalPointsGranted = summary.signup.points + summary.purchase.points
   return summary
 }
+
+/**
+ * 有料加入ポイントの取り消し。
+ *
+ * 管理画面で「決済済」を取り消したときに使う。台帳の該当行を削除して残高を戻すので、
+ * 「残高 = 台帳の合計」という不変条件は保たれ、再度決済済にすれば改めて付与される。
+ *
+ * 同じ被紹介者に他の支払い済み購入が残っている場合は取り消さない
+ * （eventKey は購入単位ではなく被紹介者単位のため）。
+ */
+export async function revokeReferralPurchasePoints(
+  purchaseId: string
+): Promise<{ revoked: boolean; reason?: string; amount?: number }> {
+  const purchase = await prisma.purchase.findUnique({
+    where: { id: purchaseId },
+    select: { user: { select: { id: true, referrerId: true } } },
+  })
+  if (!purchase) return { revoked: false, reason: 'purchase_not_found' }
+  if (!purchase.user.referrerId) return { revoked: false, reason: 'no_referrer' }
+
+  const stillPaid = await prisma.purchase.count({
+    where: { userId: purchase.user.id, status: 'paid' },
+  })
+  if (stillPaid > 0) return { revoked: false, reason: 'still_has_paid_purchase' }
+
+  const eventKey = referralPurchaseEventKey(purchase.user.id)
+
+  return await prisma.$transaction(async (tx) => {
+    const entry = await tx.pointTransaction.findUnique({
+      where: { eventKey },
+      select: { id: true, userId: true, amount: true },
+    })
+    if (!entry) return { revoked: false, reason: 'not_granted' }
+
+    await tx.pointTransaction.delete({ where: { id: entry.id } })
+    await tx.user.update({
+      where: { id: entry.userId },
+      data: { points: { decrement: entry.amount } },
+    })
+    return { revoked: true, amount: entry.amount }
+  })
+}

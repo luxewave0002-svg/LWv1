@@ -44,24 +44,20 @@ export default function CheckoutPage() {
     setError('')
 
     try {
-      const mockTokenId = `mock_token_${Date.now()}`
-
-      const res = await fetch('/api/univapay/charge', {
+      // 「未決済」の購入記録を作ってから UnivaPay の決済ページへ送る
+      const res = await fetch('/api/checkout/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transactionTokenId: mockTokenId,
-          planId: selectedPlan.id,
-        }),
+        body: JSON.stringify({ planId: selectedPlan.id }),
       })
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error ?? '決済に失敗しました')
+      if (!res.ok) throw new Error(data.error ?? '決済ページを開けませんでした')
 
-      router.push(`/checkout/complete?purchaseId=${data.purchaseId}`)
+      // 決済は UnivaPay 側で完結する。入金確定は webhook か管理画面の操作で反映される。
+      window.location.href = data.paymentUrl
     } catch (e) {
-      setError(e instanceof Error ? e.message : '決済に失敗しました')
-    } finally {
+      setError(e instanceof Error ? e.message : '決済ページを開けませんでした')
       setProcessing(false)
     }
   }
