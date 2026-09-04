@@ -17,6 +17,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = safeNext(searchParams.get('next'))
+  const adminMode = nextPath === '/admin'
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,13 +29,15 @@ function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false)
 
   useEffect(() => {
+    // 管理者ログインでは登録タブへ切り替えない
+    if (adminMode) return
     const code = searchParams.get('invite') ?? searchParams.get('ref') ?? ''
     if (code) {
       setInviteCode(code)
       setTab('register')
     }
     if (searchParams.get('tab') === 'register') setTab('register')
-  }, [searchParams])
+  }, [searchParams, adminMode])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -86,8 +89,6 @@ function LoginForm() {
     await signIn('google', { callbackUrl: nextPath })
   }
 
-  const adminMode = nextPath === '/admin'
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-lw-void">
       {/* Wordmark */}
@@ -104,7 +105,8 @@ function LoginForm() {
           </div>
         )}
 
-        {/* Tab switcher */}
+        {/* Tab switcher — 管理者ログインでは新規登録を出さない */}
+        {!adminMode && (
         <div className="flex mb-8 border-b border-lw-gold/10">
           {(['login', 'register'] as const).map((t) => (
             <button
@@ -120,6 +122,7 @@ function LoginForm() {
             </button>
           ))}
         </div>
+        )}
 
         {tab === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-5">
