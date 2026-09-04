@@ -9,6 +9,7 @@ async function getKpis(): Promise<{
   totalRevenue: number
   monthlyRevenue: number
   pendingPartners: number
+  totalPoints: number
   recentUsers: RecentUser[]
   recentPurchases: RecentPurchase[]
 }> {
@@ -21,6 +22,7 @@ async function getKpis(): Promise<{
     totalRevenue,
     monthlyRevenue,
     pendingPartners,
+    totalPoints,
     recentUsers,
     recentPurchases,
   ] = await Promise.all([
@@ -32,6 +34,8 @@ async function getKpis(): Promise<{
       _sum: { amountJpy: true },
     }),
     prisma.partnerProfile.count({ where: { status: 'pending' } }),
+    // 残高キャッシュ（users.points）ではなく台帳を集計する
+    prisma.pointTransaction.aggregate({ _sum: { amount: true } }),
     prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, name: true, email: true, createdAt: true } }),
     prisma.purchase.findMany({
       where: { status: 'paid' },
@@ -47,6 +51,7 @@ async function getKpis(): Promise<{
     totalRevenue: totalRevenue._sum.amountJpy ?? 0,
     monthlyRevenue: monthlyRevenue._sum.amountJpy ?? 0,
     pendingPartners,
+    totalPoints: totalPoints._sum.amount ?? 0,
     recentUsers,
     recentPurchases,
   }
@@ -60,7 +65,7 @@ export default async function AdminDashboard() {
       <h1 className="text-2xl font-display font-light text-lw-text-primary">ダッシュボード</h1>
 
       {/* KPIカード */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: '総ユーザー数', value: kpis.totalUsers.toLocaleString(), color: 'text-lw-gold' },
           { label: '今月の新規', value: `+${kpis.newUsersThisMonth}`, color: 'text-lw-teal' },
@@ -71,6 +76,7 @@ export default async function AdminDashboard() {
             color: 'text-sky-400',
             badge: kpis.pendingPartners > 0 ? `承認待 ${kpis.pendingPartners}件` : null,
           },
+          { label: '発行済みポイント', value: `${kpis.totalPoints.toLocaleString()} pt`, color: 'text-lw-gold' },
         ].map((card) => (
           <div key={card.label} className="bg-lw-surface rounded-2xl p-5 border border-lw-gold/10">
             <div className="text-lw-text-secondary text-xs mb-2 tracking-[0.06em] uppercase">{card.label}</div>

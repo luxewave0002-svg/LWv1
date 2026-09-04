@@ -20,6 +20,7 @@ export async function GET() {
       role: true,
       createdAt: true,
       referralCode: true,
+      points: true,
       _count: { select: { referrals: true, purchases: true } },
     },
   })

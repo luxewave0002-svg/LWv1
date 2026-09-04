@@ -11,6 +11,7 @@ type User = {
   role: string
   createdAt: string
   referralCode: string
+  points: number
   _count: { referrals: number; purchases: number }
 }
 
@@ -63,6 +64,7 @@ export default function AdminUsersPage() {
   })
 
   const adminCount = users.filter((u) => u.role === 'admin').length
+  const totalPoints = users.reduce((sum, u) => sum + (u.points ?? 0), 0)
 
   return (
     <div className="p-8 space-y-6">
@@ -70,7 +72,8 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-display font-light text-lw-text-primary">ユーザー管理</h1>
           <p className="text-lw-text-tertiary text-sm mt-1">
-            全 {users.length} 名（管理者 {adminCount} 名）
+            全 {users.length} 名（管理者 {adminCount} 名） ・ 発行済みポイント{' '}
+            <span className="text-lw-gold">{totalPoints.toLocaleString()}</span> pt
           </p>
         </div>
       </div>
@@ -110,6 +113,7 @@ export default function AdminUsersPage() {
               <th className="text-left px-4 py-3 font-medium">メール</th>
               <th className="text-left px-4 py-3 font-medium">ロール</th>
               <th className="text-left px-4 py-3 font-medium">招待 / 購入</th>
+              <th className="text-left px-4 py-3 font-medium">ポイント</th>
               <th className="text-left px-4 py-3 font-medium">登録日</th>
               <th className="text-left px-4 py-3 font-medium">操作</th>
             </tr>
@@ -117,11 +121,11 @@ export default function AdminUsersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td>
+                <td colSpan={7} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-lw-text-tertiary">
+                <td colSpan={7} className="text-center py-12 text-lw-text-tertiary">
                   {search || roleFilter !== 'all' ? '条件に一致するユーザーがいません' : 'ユーザーがいません'}
                 </td>
               </tr>
@@ -147,6 +151,18 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 text-lw-text-secondary">
                     <span className="text-lw-gold">{u._count.referrals}</span> 招待 /{' '}
                     <span className="text-lw-teal">{u._count.purchases}</span> 購入
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.points > 0 ? (
+                      <span className="text-lw-gold font-medium">
+                        {u.points.toLocaleString()}
+                        <span className="text-lw-gold/60 text-xs ml-0.5">pt</span>
+                      </span>
+                    ) : (
+                      <span className="text-lw-text-tertiary">
+                        0<span className="text-xs ml-0.5">pt</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-lw-text-secondary text-xs">
                     {new Date(u.createdAt).toLocaleDateString('ja-JP')}
