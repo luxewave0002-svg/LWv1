@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { grantPointsSafely, grantReferralPurchasePoints } from '@/lib/points'
+import { verifyWebhookAuth } from '@/lib/univapay'
 
 export async function POST(request: NextRequest) {
-  // 本番では Webhook シークレット検証を追加
-  // const signature = request.headers.get('x-univapay-signature')
-  // if (!verifySignature(signature, body)) return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  // UNIVAPAY_WEBHOOK_AUTH_TOKEN が設定されている場合のみ検証する（未設定なら素通し）
+  const auth = verifyWebhookAuth(request.headers)
+  if (!auth.ok) {
+    console.warn('[univapay] webhook rejected:', auth.reason)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { event, data } = body
