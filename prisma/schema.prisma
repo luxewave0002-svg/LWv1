@@ -63,6 +63,7 @@ model User {
   referrer       User?     @relation("Referrals", fields: [referrerId], references: [id])
   referrals      User[]    @relation("Referrals")
   role           String    @default("user")
+  points         Int       @default(0)
   createdAt      DateTime  @default(now()) @map("created_at")
 
   accounts       Account[]
@@ -71,6 +72,10 @@ model User {
   sentInvites    InviteLog[]     @relation("SentInvites")
   receivedInvite InviteLog?      @relation("ReceivedInvite")
   purchases      Purchase[]
+
+  // 受け取ったポイント（台帳）／自分が起点になって紹介者に入ったポイント
+  pointTransactions PointTransaction[] @relation("PointOwner")
+  pointsSourced     PointTransaction[] @relation("PointSource")
 
   @@map("users")
 }
@@ -143,4 +148,30 @@ model Purchase {
   createdAt          DateTime  @default(now()) @map("created_at")
 
   @@map("purchases")
+}
+
+// ─────────────────────────────────────────
+// ポイント台帳
+//
+// eventKey がこの機能の要。1イベント＝1レコードを DB の UNIQUE 制約で保証し、
+// 同じ紹介成立で複数回ポイントが入らないようにする。
+//   無料登録成立   referral_signup:{被紹介者ID}
+//   有料プラン加入 referral_purchase:{被紹介者ID}
+// User.points はこの台帳の合計をキャッシュした値（参照用）。
+// ─────────────────────────────────────────
+model PointTransaction {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  user         User     @relation("PointOwner", fields: [userId], references: [id], onDelete: Cascade)
+  sourceUserId String?  @map("source_user_id")
+  sourceUser   User?    @relation("PointSource", fields: [sourceUserId], references: [id], onDelete: SetNull)
+  amount       Int
+  type         String
+  eventKey     String   @unique @map("event_key")
+  description  String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([sourceUserId])
+  @@map("point_transactions")
 }

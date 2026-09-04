@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { grantPointsSafely, grantReferralPurchasePoints } from '@/lib/points'
 
 export async function POST(request: NextRequest) {
   // 本番では Webhook シークレット検証を追加
@@ -22,6 +23,14 @@ export async function POST(request: NextRequest) {
           paidAt: data.status === 'successful' ? new Date() : null,
         },
       })
+
+      // 有料プラン加入の成立 → 紹介者に 15pt。
+      // charge 側で既に付与済みでも eventKey が同じなので二重付与にはならない。
+      if (data.status === 'successful') {
+        await grantPointsSafely(`referral purchase for purchase ${purchase.id}`, () =>
+          grantReferralPurchasePoints(purchase.id)
+        )
+      }
     }
   }
 

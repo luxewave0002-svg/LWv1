@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createCharge } from '@/lib/univapay'
+import { grantPointsSafely, grantReferralPurchasePoints } from '@/lib/points'
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -46,6 +47,14 @@ export async function POST(request: NextRequest) {
       paidAt: charge.status === 'successful' ? new Date() : null,
     },
   })
+
+  // 有料プラン加入の成立 → 紹介者に 15pt。
+  // Webhook 側からも同じ購入で呼ばれるが、eventKey が同じなので二重付与にはならない。
+  if (charge.status === 'successful') {
+    await grantPointsSafely(`referral purchase for purchase ${purchase.id}`, () =>
+      grantReferralPurchasePoints(purchase.id)
+    )
+  }
 
   return NextResponse.json({ chargeId: charge.id, purchaseId: purchase.id })
 }

@@ -32,10 +32,40 @@ export async function GET() {
     `,
   ])
 
+  // ポイントはスキーマ追加が前提の機能なので、取得失敗をダッシュボード全体の
+  // 障害にしない。マイグレーション未適用の状態でデプロイされても、
+  // 紹介数・招待コードなど既存の表示は従来どおり動く。
+  let points = 0
+  let pointHistory: unknown[] = []
+  try {
+    const [pointUser, history] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { points: true } }),
+      prisma.pointTransaction.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          amount: true,
+          type: true,
+          description: true,
+          createdAt: true,
+          sourceUser: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+    ])
+    points = pointUser?.points ?? 0
+    pointHistory = history
+  } catch (error) {
+    console.error('[points] stats lookup failed (migration applied?):', error)
+  }
+
   return NextResponse.json({
     referralCode: user?.referralCode ?? '',
     directCount: referrals.length,
     totalCount: Number(totalCount[0]?.count ?? 0),
     referrals,
+    points,
+    pointHistory,
   })
 }

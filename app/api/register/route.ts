@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { customAlphabet } from 'nanoid'
+import { grantPointsSafely, grantReferralSignupPoints } from '@/lib/points'
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8)
 
@@ -74,6 +75,11 @@ export async function POST(request: NextRequest) {
       data: { inviteeId: user.id, joinedAt: new Date() },
     })
   }
+
+  // 無料登録の成立 → 紹介者に 5pt（招待コード経由で referrerId が付いた場合のみ）
+  await grantPointsSafely(`referral signup for user ${user.id}`, () =>
+    grantReferralSignupPoints(user)
+  )
 
   return NextResponse.json({ ok: true })
 }
