@@ -22,9 +22,26 @@ export async function GET() {
       referralCode: true,
       points: true,
       _count: { select: { referrals: true, purchases: true } },
+      // 決済状況の集計用。件数が少ないうちは取得して数える方が、
+      // status ごとの絞り込みカウントを並べるより読みやすい。
+      purchases: { select: { status: true, amountJpy: true } },
     },
   })
-  return NextResponse.json(users)
+
+  const rows = users.map(({ purchases, ...user }) => {
+    const paid = purchases.filter((p) => p.status === 'paid')
+    const pending = purchases.filter((p) => p.status === 'pending')
+    return {
+      ...user,
+      payment: {
+        paidCount: paid.length,
+        pendingCount: pending.length,
+        paidTotal: paid.reduce((sum, p) => sum + p.amountJpy, 0),
+      },
+    }
+  })
+
+  return NextResponse.json(rows)
 }
 
 export async function PATCH(request: NextRequest) {

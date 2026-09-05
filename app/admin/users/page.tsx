@@ -13,6 +13,7 @@ type User = {
   referralCode: string
   points: number
   _count: { referrals: number; purchases: number }
+  payment: { paidCount: number; pendingCount: number; paidTotal: number }
 }
 
 export default function AdminUsersPage() {
@@ -113,6 +114,7 @@ export default function AdminUsersPage() {
               <th className="text-left px-4 py-3 font-medium">メール</th>
               <th className="text-left px-4 py-3 font-medium">ロール</th>
               <th className="text-left px-4 py-3 font-medium">招待 / 購入</th>
+              <th className="text-left px-4 py-3 font-medium">決済状況</th>
               <th className="text-left px-4 py-3 font-medium">ポイント</th>
               <th className="text-left px-4 py-3 font-medium">登録日</th>
               <th className="text-left px-4 py-3 font-medium">操作</th>
@@ -121,11 +123,11 @@ export default function AdminUsersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td>
+                <td colSpan={8} className="text-center py-12 text-lw-text-tertiary">読み込み中...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-lw-text-tertiary">
+                <td colSpan={8} className="text-center py-12 text-lw-text-tertiary">
                   {search || roleFilter !== 'all' ? '条件に一致するユーザーがいません' : 'ユーザーがいません'}
                 </td>
               </tr>
@@ -151,6 +153,28 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 text-lw-text-secondary">
                     <span className="text-lw-gold">{u._count.referrals}</span> 招待 /{' '}
                     <span className="text-lw-teal">{u._count.purchases}</span> 購入
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.payment.paidCount > 0 ? (
+                      <div>
+                        <span className="text-xs px-2.5 py-1 rounded-full font-medium border bg-lw-teal-muted/40 text-lw-teal border-lw-teal-mid/50">
+                          決済済
+                        </span>
+                        <div className="text-lw-text-tertiary text-xs mt-1">
+                          ¥{u.payment.paidTotal.toLocaleString()}
+                          {u.payment.pendingCount > 0 && ` ・未決済 ${u.payment.pendingCount}件`}
+                        </div>
+                      </div>
+                    ) : u.payment.pendingCount > 0 ? (
+                      <div>
+                        <span className="text-xs px-2.5 py-1 rounded-full font-medium border bg-yellow-900/30 text-yellow-400 border-yellow-700/50">
+                          未決済
+                        </span>
+                        <div className="text-lw-text-tertiary text-xs mt-1">{u.payment.pendingCount}件</div>
+                      </div>
+                    ) : (
+                      <span className="text-lw-text-tertiary text-xs">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {u.points > 0 ? (
